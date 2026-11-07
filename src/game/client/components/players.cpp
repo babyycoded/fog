@@ -863,6 +863,7 @@ void CPlayers::RenderPlayer(
 		RenderTools()->RenderTee(&State, &RenderInfo, Player.m_Emote, Direction, ShadowPosition, g_Config.m_ClUnpredictedShadowAlpha / 100.f); // render ghost
 	}
 
+	GameClient()->m_FogTrails.Record(ClientId, State, RenderInfo, Player.m_Emote, Direction, Position);
 	RenderTools()->RenderTee(&State, &RenderInfo, Player.m_Emote, Direction, Position, Alpha);
 
 	float TeeAnimScale, TeeBaseSize;
@@ -960,6 +961,22 @@ void CPlayers::OnRender()
 	{
 		aRenderInfo[i] = GameClient()->m_aClients[i].m_RenderInfo;
 		aRenderInfo[i].m_TeeRenderFlags = 0;
+		// Fog tee studio: animated colours and patterns on your own tees
+		if(i == GameClient()->m_aLocalIds[0] || i == GameClient()->m_aLocalIds[1])
+		{
+			GameClient()->m_FogTeeStyle.Apply(aRenderInfo[i], i == GameClient()->m_aLocalIds[0] ? CFogTeeStyle::SLOT_PLAYER : CFogTeeStyle::SLOT_DUMMY, GameClient()->m_aClients[i].m_aSkinName);
+			aRenderInfo[i].m_FogAccessorySlot = GameClient()->m_FogAccessories.SlotFor(i == GameClient()->m_aLocalIds[0] ? 0 : 1);
+		}
+		else if(g_Config.m_FogShowOthersLooks && GameClient()->m_aClients[i].m_Active)
+		{
+			// other Fog players: their studio look, shared through the presence server
+			const SFogNameStyle *pStyle = GameClient()->m_FogPresence.Find(GameClient()->m_aClients[i].m_aName);
+			if(pStyle && pStyle->m_HasLook)
+			{
+				GameClient()->m_FogTeeStyle.ApplyRemote(aRenderInfo[i], i, pStyle->m_Look, GameClient()->m_aClients[i].m_aSkinName);
+				aRenderInfo[i].m_FogAccessorySlot = GameClient()->m_FogAccessories.SetRemote(i, pStyle->m_Look);
+			}
+		}
 
 		// predict freeze skin only for local players
 		bool Frozen = false;

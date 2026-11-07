@@ -36,6 +36,7 @@ private:
 	float m_ScrollbarMargin;
 	bool m_HasHeader;
 	bool m_Active;
+	bool m_DrawHighlights = true;
 
 protected:
 	CListboxItem DoNextRow();
@@ -56,6 +57,8 @@ public:
 	// Active state must be set before calling DoStart.
 	bool Active() const { return m_Active; }
 	void SetActive(bool Active) { m_Active = Active; }
+	// off: the caller draws its own selected and hover states
+	void SetDrawHighlights(bool Draw) { m_DrawHighlights = Draw; }
 
 	bool WasItemSelected() const { return m_ListBoxItemSelected; }
 	bool WasItemActivated() const { return m_ListBoxItemActivated; }

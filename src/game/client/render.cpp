@@ -491,10 +491,24 @@ void CRenderTools::RenderTee7(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 	}
 }
 
+CRenderTools::FFogAccessoryHook CRenderTools::ms_pfnFogAccessoryHook = nullptr;
+void *CRenderTools::ms_pFogAccessoryUser = nullptr;
+
 void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, int Emote, vec2 Dir, vec2 Pos, float Alpha) const
 {
 	vec2 Direction = Dir;
 	vec2 Position = Pos;
+
+	const auto FogAccessories = [&](int Layer) {
+		if(pInfo->m_FogAccessorySlot < 0 || !ms_pfnFogAccessoryHook)
+			return;
+		float AnimScale, BaseSize;
+		GetRenderTeeAnimScaleAndBaseSize(pInfo, AnimScale, BaseSize);
+		const vec2 BodyPos = Position + vec2(pAnim->GetBody()->m_X, pAnim->GetBody()->m_Y) * AnimScale;
+		ms_pfnFogAccessoryHook(ms_pFogAccessoryUser, pInfo->m_FogAccessorySlot, Layer, pAnim, Position, BodyPos, BaseSize, pAnim->GetBody()->m_Angle * pi * 2, Direction, Alpha);
+		Graphics()->QuadsSetRotation(0.0f);
+	};
+	FogAccessories(0);
 
 	const CSkin::CSkinTextures *pSkinTextures = pInfo->m_CustomColoredSkin ? &pInfo->m_ColorableRenderSkin : &pInfo->m_OriginalRenderSkin;
 
@@ -591,6 +605,7 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 			Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, QuadOffset, Position.x + pFoot->m_X * AnimScale, Position.y + pFoot->m_Y * AnimScale, w / 64.f, h / 32.f);
 		}
 	}
+	FogAccessories(1);
 }
 
 ColorRGBA CRenderTools::GetPingTextColor(int Latency)

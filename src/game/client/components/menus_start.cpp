@@ -23,6 +23,12 @@
 
 void CMenusStart::RenderStartMenu(CUIRect MainView)
 {
+	if(g_Config.m_FogUi && g_Config.m_FogUiMenus)
+	{
+		RenderFogStart(MainView);
+		return;
+	}
+
 	GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_START);
 
 	// render logo
@@ -268,5 +274,5 @@ bool CMenusStart::CheckHotKey(int Key) const
 {
 	return !Input()->ShiftIsPressed() && !Input()->ModifierIsPressed() && !Input()->AltIsPressed() && // no modifier
 	       Input()->KeyPress(Key) &&
-	       !GameClient()->m_GameConsole.IsActive();
+	       !GameClient()->m_GameConsole.IsActive() && !GameClient()->m_Menus.FogDropActive();
 }

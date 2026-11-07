@@ -196,6 +196,7 @@ public:
 	float MessagePaddingX() const { return FontSize() * (5 / 6.f); }
 	float MessagePaddingY() const { return FontSize() * (1 / 6.f); }
 	float MessageTeeSize() const { return FontSize() * (7 / 6.f); }
+	float m_FogInputOpen = 0.0f; // Fog: chat input opening spring
 	float MessageRounding() const { return FontSize() * (1 / 2.f); }
 
 	// ----- send functions -----

@@ -1,0 +1,3 @@
+fog.png - Fog client game skin
+
+Derived from DDNet's data/game.png (CC BY-SA 3.0, see license.txt): the same sprites with the Fog colour correction (monochrome mist palette; muted colour kept on health hearts and team flags).

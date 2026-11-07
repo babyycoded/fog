@@ -33,6 +33,7 @@ public:
 	bool IsActive() const;
 
 	void OnRender() override;
+	void FogRender(); // fog/hud.cpp: a compact glass card under the timer
 	void OnStateChange(int NewState, int OldState) override;
 	void OnWindowResize() override;
 	void OnMessage(int MsgType, void *pRawMsg) override;

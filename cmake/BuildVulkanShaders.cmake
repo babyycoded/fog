@@ -80,6 +80,8 @@ endfunction()
 # Register all Vulkan shaders to compile
 
 # Primitives
+generate_shader_file("" "" "post.frag" "post.frag.spv")
+generate_shader_file("" "" "post.vert" "post.vert.spv")
 generate_shader_file("" "" "prim.frag" "prim.frag.spv")
 generate_shader_file("" "" "prim.vert" "prim.vert.spv")
 

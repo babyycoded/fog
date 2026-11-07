@@ -9,6 +9,7 @@
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 
+#include <game/client/components/fog/glass.h>
 #include <game/client/components/menu_background.h>
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
@@ -24,42 +25,51 @@ void CMenus::SetNeedSendInfo()
 
 void CMenus::RenderSettings(CUIRect MainView)
 {
-	// render background
 	CUIRect Button, TabBar, RestartBar;
-	MainView.VSplitRight(120.0f, &MainView, &TabBar);
-	MainView.Draw(ms_ColorTabbarActive, IGraphics::CORNER_B, 10.0f);
-	MainView.Margin(20.0f, &MainView);
-
 	const bool NeedRestart = m_NeedRestartGraphics || m_NeedRestartSound || m_NeedRestartUpdate;
-	if(NeedRestart)
+	if(FogMenusActive())
 	{
-		MainView.HSplitBottom(20.0f, &MainView, &RestartBar);
-		MainView.HSplitBottom(10.0f, &MainView, nullptr);
+		RenderFogSettingsNav(MainView, RestartBar, NeedRestart);
 	}
-
-	TabBar.HSplitTop(50.0f, &Button, &TabBar);
-	Button.Draw(ms_ColorTabbarActive, IGraphics::CORNER_BR, 10.0f);
-
-	const char *apTabs[SETTINGS_LENGTH] = {
-		Localize("Language"),
-		Localize("General"),
-		Localize("Player"),
-		Client()->IsSixup() ? "Tee 0.7" : Localize("Tee"),
-		Localize("Appearance"),
-		Localize("Controls"),
-		Localize("Graphics"),
-		Localize("Sound"),
-		Localize("DDNet"),
-		Localize("Assets"),
-		Localize("Credits")};
-	static CButtonContainer s_aTabButtons[SETTINGS_LENGTH];
-
-	for(int i = 0; i < SETTINGS_LENGTH; i++)
+	else
 	{
-		TabBar.HSplitTop(10.0f, nullptr, &TabBar);
-		TabBar.HSplitTop(26.0f, &Button, &TabBar);
-		if(DoButton_MenuTab(&s_aTabButtons[i], apTabs[i], g_Config.m_UiSettingsPage == i, &Button, IGraphics::CORNER_R, &m_aAnimatorsSettingsTab[i]))
-			g_Config.m_UiSettingsPage = i;
+		// render background
+		MainView.VSplitRight(120.0f, &MainView, &TabBar);
+		MainView.Draw(ms_ColorTabbarActive, IGraphics::CORNER_B, 10.0f);
+		MainView.Margin(20.0f, &MainView);
+
+		if(NeedRestart)
+		{
+			MainView.HSplitBottom(20.0f, &MainView, &RestartBar);
+			MainView.HSplitBottom(10.0f, &MainView, nullptr);
+		}
+
+		TabBar.HSplitTop(50.0f, &Button, &TabBar);
+		Button.Draw(ms_ColorTabbarActive, IGraphics::CORNER_BR, 10.0f);
+
+		const char *apTabs[SETTINGS_LENGTH] = {
+			Localize("Language"),
+			Localize("General"),
+			Localize("Player"),
+			Client()->IsSixup() ? "Tee 0.7" : Localize("Tee"),
+			Localize("Appearance"),
+			Localize("Controls"),
+			Localize("Graphics"),
+			Localize("Sound"),
+			Localize("DDNet"),
+			"Fog",
+			Localize("Visuals"),
+			Localize("Assets"),
+			Localize("Credits")};
+		static CButtonContainer s_aTabButtons[SETTINGS_LENGTH];
+
+		for(int i = 0; i < SETTINGS_LENGTH; i++)
+		{
+			TabBar.HSplitTop(10.0f, nullptr, &TabBar);
+			TabBar.HSplitTop(26.0f, &Button, &TabBar);
+			if(DoButton_MenuTab(&s_aTabButtons[i], apTabs[i], g_Config.m_UiSettingsPage == i, &Button, IGraphics::CORNER_R, &m_aAnimatorsSettingsTab[i]))
+				g_Config.m_UiSettingsPage = i;
+		}
 	}
 
 	if(g_Config.m_UiSettingsPage == SETTINGS_LANGUAGE)
@@ -109,6 +119,18 @@ void CMenus::RenderSettings(CUIRect MainView)
 	{
 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_DDNET);
 		RenderSettingsDDNet(MainView);
+	}
+	else if(g_Config.m_UiSettingsPage == SETTINGS_FOG)
+	{
+		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_DDNET);
+		RenderSettingsFog(MainView);
+	}
+	else if(g_Config.m_UiSettingsPage == SETTINGS_SHADERS)
+	{
+		// the old Visuals page: now a section of the Fog tab
+		g_Config.m_UiSettingsPage = SETTINGS_FOG;
+		m_FogVisualsTab = 1;
+		RenderSettingsFog(MainView);
 	}
 	else if(g_Config.m_UiSettingsPage == SETTINGS_ASSETS)
 	{

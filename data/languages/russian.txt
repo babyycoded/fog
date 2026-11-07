@@ -2723,3 +2723,1626 @@ not bound
 
 Show cursor
 == 
+
+3D depth
+== Объём
+
+Above everything
+== Поверх всего
+
+Animate the Fog interface and lyrics
+== Анимации интерфейса и текста
+
+Animation
+== Анимация
+
+Arc
+== Изгиб
+
+Bottom left
+== Снизу слева
+
+Bottom right
+== Снизу справа
+
+Bounce
+== Прыжок
+
+Calm
+== Спокойно
+
+Card position
+== Карточка
+
+Colors
+== Цвета
+
+Depth
+== Глубина
+
+Distance (parallax)
+== Глубина фона
+
+Download lyrics from LRCLIB
+== Скачивать тексты с LRCLIB
+
+Floatiness
+== Плавучесть
+
+Font
+== Шрифт
+
+Game font
+== Шрифт игры
+
+Glass panels
+== Стеклянные панели
+
+Glass tint
+== Оттенок стекла
+
+Glide
+== Плавно
+
+Glow
+== Свечение
+
+Glow spread
+== Ширина
+
+Highlight
+== Подсветка
+
+Inside the map
+== Внутри карты
+
+Intensity
+== Сила
+
+Letter animation
+== Анимация букв
+
+Letter by letter
+== По буквам
+
+Letters still to come
+== Будущие буквы
+
+Light and depth
+== Свет и объём
+
+Light on the glass
+== Блик на стекле
+
+Lines stay for
+== Строки держатся
+
+Lyrics
+== Текст песен
+
+Lyrics font
+== Шрифт текста
+
+Mist
+== Туман
+
+Mist behind the words
+== Туман
+
+Music
+== Музыка
+
+Music is off.
+== Музыка выключена.
+
+Next to you
+== Рядом с тобой
+
+No player is playing. Start Spotify, or any app that supports MPRIS.
+== Ничего не играет. Запусти Spotify или любой плеер с поддержкой MPRIS.
+
+Now playing
+== Сейчас играет
+
+Offset sideways
+== Сдвиг вбок
+
+Offset up and down
+== Сдвиг вверх
+
+Perspective
+== Перспектива
+
+Placement and motion
+== Положение и движение
+
+Play the lyrics preview in game
+== Показать пример текста в игре
+
+Read the current track from Spotify and other players
+== Трек из Spotify и других плееров
+
+Screen karaoke
+== Караоке на экране
+
+Shadow
+== Тень
+
+Show synced lyrics while music plays
+== Текст песни во время музыки
+
+Show the next line in the fog
+== Следующая строка в тумане
+
+Show the now playing card in game
+== Показывать карточку трека в игре
+
+Smooth sweep
+== Плавная волна
+
+Sung letters
+== Спетые буквы
+
+Tilt
+== Наклон
+
+Timing offset
+== Сдвиг тайминга
+
+Top left
+== Сверху слева
+
+Top right
+== Сверху справа
+
+Trail left in the map
+== След на карте
+
+Typewriter
+== Печатная машинка
+
+Wave
+== Волна
+
+Weight
+== Толщина
+
+Where lyrics appear
+== Где текст
+
+Whole words
+== Целыми словами
+
+instrumental
+== инструментал
+
+looking for lyrics…
+== ищу текст…
+
+lyrics are off
+== текст выключен
+
+no synced lyrics for this track
+== для этого трека нет синхронного текста
+
+synced lyrics found
+== синхронный текст найден
+
+tiles/s
+== тайлов/с
+
+Appears from speed
+== Появляется со скорости
+
+Copies at most
+== Копий максимум
+
+Distance between copies
+== Расстояние между копиями
+
+Each copy stays
+== Каждая копия держится
+
+Fading copies
+== Гаснущие копии
+
+Fog
+== Туман
+
+Fresh copies
+== Свежие копии
+
+Glitch
+== Глитч
+
+Leave afterimages when moving fast
+== Силуэты на большой скорости
+
+Phantom
+== Фантом
+
+Preset
+== Пресет
+
+Show trails of other players
+== Показывать трейлы других игроков
+
+Time between copies
+== Время между копиями
+
+Trails
+== Трейлы
+
+Fog glass for the whole menu (experimental)
+== Стеклянное меню целиком (тест)
+
+Add friends in the server browser
+== Добавь друзей в браузере серверов
+
+Connect
+== Подключиться
+
+Continue
+== Продолжить
+
+Friends online
+== Друзья онлайн
+
+Last server
+== Последний сервер
+
+Nobody yet
+== Пока никого
+
+Silence
+== Тишина
+
+Start Spotify and the track shows up here
+== Включи Spotify, и трек появится здесь
+
+a quiet client for DDNet
+== тихий клиент для DDNet
+
+Servers
+== Серверы
+
+More
+== Ещё
+
+You
+== Вы
+
+Look and sound
+== Вид и звук
+
+Other
+== Прочее
+
+The language of menus, chat hints and messages.
+== Язык меню, подсказок и сообщений.
+
+Demos, screenshots, updates and how the client behaves.
+== Демо, скриншоты, обновления и поведение клиента.
+
+Your name, clan and flag, for you and your dummy.
+== Имя, клан и флаг — для вас и дамми.
+
+Skin, body and feet colours, eyes.
+== Скин, цвета тела и ног, глаза.
+
+HUD, chat, name plates, hook and laser colours.
+== HUD, чат, ники, цвета хука и лазера.
+
+Key bindings, mouse and joystick.
+== Клавиши, мышь и джойстик.
+
+Screen, renderer, frame rate and quality.
+== Экран, рендерер, частота кадров и качество.
+
+Volume, sound device and game sounds.
+== Громкость, устройство и игровые звуки.
+
+Race, ghost, dummy, background and other DDNet options.
+== Гонка, призрак, дамми, фон и прочее из DDNet.
+
+Lyrics, trails, music and the glass interface.
+== Тексты песен, трейлы, музыка и стеклянный интерфейс.
+
+Entities, game, emoticons, particles and HUD skins.
+== Entities, игра, эмоции, частицы и скины HUD.
+
+The people who made DDNet.
+== Люди, которые сделали DDNet.
+
+Sort by
+== Сортировка
+
+All communities
+== Все сообщества
+
+All maps
+== Все карты
+
+Server, map or player
+== Сервер, карта или игрок
+
+Pick a server to see its map and who is playing.
+== Выбери сервер, чтобы увидеть карту и кто играет.
+
+In favorites
+== В избранном
+
+Playing now
+== Сейчас играют
+
+Server
+== Сервер
+
+Filters
+== Фильтры
+
+Refresh
+== Обновить
+
+All modes
+== Все режимы
+
+Any difficulty
+== Любая сложность
+
+Any
+== Все
+
+Difficulty
+== Сложность
+
+Category
+== Категория
+
+Players needed
+== Игроков
+
+Alone
+== Один
+
+With a dummy
+== С дамми
+
+Team of 2+
+== Команда 2+
+
+Easy maps, good for a first run with a friend
+== Лёгкие карты — для первого прохождения с другом
+
+Longer maps that expect clean basic moves
+== Карты длиннее, нужны уверенные базовые приёмы
+
+Hard parts that need practised team play
+== Сложные места, нужна сыгранная команда
+
+The hardest pool, for very experienced teams
+== Самые сложные карты, для очень опытных команд
+
+Maps you finish alone
+== Карты, которые проходятся в одиночку
+
+Maps for you and your dummy
+== Карты для тебя и твоего дамми
+
+Race maps against the clock
+== Гоночные карты на время
+
+Fun maps, not ranked by difficulty
+== Развлекательные карты без уровня сложности
+
+Maps in the old DDmaX style
+== Карты в старом стиле DDmaX
+
+Classic maps from the early days
+== Классические карты ранних лет
+
+Solo maps: one player is enough
+== Соло-карты: хватит одного игрока
+
+One player and a dummy
+== Один игрок и дамми
+
+Team maps: you need at least one partner
+== Командные карты: нужен хотя бы один напарник
+
+Copy
+== Копировать
+
+Fog HUD: timer, checkpoints and finish
+== Fog HUD: таймер, чекпоинты и финиш
+
+Finish
+== Финиш
+
+new personal best
+== новый личный рекорд
+
+to your best
+== к твоему рекорду
+
+Server best
+== Рекорд сервера
+
+Your best
+== Твой рекорд
+
+Message from the server
+== Сообщение сервера
+
+Esc to close
+== Esc — закрыть
+
+Fog map tiles (standard tilesets, from the next map)
+== Туманные стандартные тайлы
+
+Fog over map colors (from the next map)
+== Туман на цветах карты
+
+World brightness (from the next map)
+== Яркость мира
+
+Play
+== Игра
+
+Paused, the game keeps running
+== Пауза — игра идёт дальше
+
+Resume
+== Продолжить
+
+Back to the map
+== Вернуться на карту
+
+Start over from the spawn
+== Начать заново со спавна
+
+Freeze your tee in place
+== Заморозить тишку на месте
+
+Watch the others
+== Смотреть за другими
+
+Get back into the round
+== Вернуться в раунд
+
+A second tee you can switch to
+== Вторая тишка для переключения
+
+Save this run as a demo
+== Сохранить забег как демо
+
+Recording now
+== Идёт запись
+
+Esc to go back to the game
+== Esc — вернуться в игру
+
+Live shaders
+== Live-шейдеры
+
+Bloom, colour, film effects, motion blur and presets.
+== Свечение, цвет, плёночные эффекты, motion blur и пресеты.
+
+Build the effects pass on startup (restart required)
+== Создавать проход эффектов при запуске (нужен перезапуск)
+
+Effects on
+== Эффекты включены
+
+Toggle key
+== Клавиша вкл/выкл
+
+Motion blur: the world, HUD, cursor and menus
+== Motion blur: мир, HUD, прицел и меню
+
+Strength
+== Сила
+
+Presets
+== Пресеты
+
+Search presets
+== Поиск пресета
+
+Active effects
+== Активные эффекты
+
+Bloom
+== Свечение (bloom)
+
+Bloom threshold
+== Порог свечения
+
+Bloom radius
+== Радиус свечения
+
+Exposure
+== Экспозиция
+
+Contrast
+== Контраст
+
+Saturation
+== Насыщенность
+
+Vibrance
+== Сочность
+
+Gamma
+== Гамма
+
+Temperature
+== Температура
+
+Tint
+== Оттенок
+
+Faded blacks
+== Выцветшие тени
+
+Colour filter
+== Цветной фильтр
+
+Fog haze
+== Туманная дымка
+
+Vignette
+== Виньетка
+
+Chromatic aberration
+== Хроматическая аберрация
+
+Film grain
+== Плёночное зерно
+
+Sharpen
+== Резкость
+
+Scanlines
+== Скан-линии
+
+Posterize
+== Постеризация
+
+Pixelate
+== Пикселизация
+
+Clean
+== Без эффектов
+
+No effects, the plain frame
+== Чистая картинка
+
+The client's own look: soft haze, quiet glow
+== Фирменный вид клиента: мягкая дымка, тихое свечение
+
+Melancholy
+== Меланхолия
+
+Cold, faded, a little lonely
+== Холодно, выцветше, немного одиноко
+
+Liquid glass
+== Жидкое стекло
+
+Wet highlights and a clear image
+== Влажные блики и чистая картинка
+
+Competitive
+== Соревновательный
+
+Crisp edges, readable freeze and hookables
+== Чёткие края, хорошо видны фриз и хукаемые блоки
+
+Streamer
+== Стример
+
+Clean and punchy for recordings
+== Чисто и сочно для записи
+
+Vivid
+== Яркий
+
+Strong colours everywhere
+== Сильные цвета везде
+
+High contrast
+== Высокий контраст
+
+Deep shadows, hard light
+== Глубокие тени, жёсткий свет
+
+Soft glow
+== Мягкое свечение
+
+Light bleeds gently around bright parts
+== Свет мягко растекается вокруг ярких мест
+
+Dreamy
+== Мечтательный
+
+Big halos and lifted blacks
+== Большие ореолы и приподнятые тени
+
+Neon nights
+== Неоновая ночь
+
+Glowing colour on a dark screen
+== Светящийся цвет на тёмном экране
+
+Cinematic
+== Кино
+
+Film contrast, warm grade, dark corners
+== Плёночный контраст, тёплый грейд, тёмные углы
+
+Noir
+== Нуар
+
+Black and white with grit
+== Чёрно-белое с зерном
+
+Sepia film
+== Сепия
+
+An old print
+== Старый отпечаток
+
+Warm sunset
+== Тёплый закат
+
+Golden light
+== Золотой свет
+
+Arctic
+== Арктика
+
+Cold and bright
+== Холодно и светло
+
+Pastel
+== Пастель
+
+Soft, light and gentle
+== Мягко, светло и нежно
+
+Retro CRT
+== Ретро-ЭЛТ
+
+Scanlines and a little colour bleed
+== Скан-линии и лёгкое расползание цвета
+
+VHS
+== VHS
+
+A worn tape
+== Потёртая кассета
+
+
+Split colour and noise
+== Расщеплённый цвет и шум
+
+Night vision
+== Ночное видение
+
+Green, grainy, glowing
+== Зелёное, зернистое, светящееся
+
+Pixel
+== Пиксели
+
+Big pixels, fewer colours
+== Крупные пиксели, меньше цветов
+
+Handheld
+== Карманная консоль
+
+A four-shade pocket console
+== Четыре оттенка, как на карманной консоли
+
+Comic
+== Комикс
+
+Flat colour, inked edges
+== Плоский цвет, обведённые края
+
+Smooth motion
+== Плавное движение
+
+A light motion blur over everything
+== Лёгкий motion blur поверх всего
+
+Speed trails
+== Скоростные шлейфы
+
+Long trails behind every movement
+== Длинные шлейфы за каждым движением
+
+Live background
+== Живой фон
+
+Still
+== Статичный
+
+Aurora
+== Северное сияние
+
+Rain on glass
+== Дождь на стекле
+
+The deep
+== Глубина
+
+Ember dusk
+== Тлеющий закат
+
+Live background instead of the map background in game
+== Живой фон вместо фона карты в игре
+
+Visuals
+== Визуалы
+
+Shaders, map fog and colours, live backgrounds, trails, player plates.
+== Шейдеры, туман и цвета карты, живые фоны, трейлы, плашки игроков.
+
+Shaders
+== Шейдеры
+
+World
+== Мир
+
+Fog over the map
+== Туман на карте
+
+Real fog drifting over the map
+== Настоящий туман над картой
+
+A thin layer in front of the tees (clears around you)
+== Туман и перед тишками
+
+Density
+== Плотность
+
+Wind
+== Ветер
+
+Map colours
+== Цвета карты
+
+Map colours, tiles and brightness apply when the next map loads. The fog and the live background change right away.
+== Цвета, тайлы и яркость карты применяются со следующей карты. Туман и живой фон меняются сразу.
+
+Above the players
+== Над игроками
+
+Ping of other players
+== Пинг других игроков
+
+
+Client ID
+== ID клиента
+
+Friend mark
+== Отметка друга
+
+Name size
+== Размер ника
+
+Hook strength
+== Сила хука
+
+Arrow
+== Стрелка
+
+Arrow and ID
+== Стрелка и ID
+
+Music and lyrics
+== Музыка и тексты
+
+Interface
+== Интерфейс
+
+Everything of this client: music and lyrics, shaders, the world, trails, players, interface.
+== Всё, что есть в этом клиенте: музыка и тексты, шейдеры, мир, трейлы, игроки, интерфейс.
+
+Your name for Fog players
+== Твой ник для игроков Fog
+
+Plain
+== Обычный
+
+Shimmer
+== Перелив
+
+Gradient
+== Градиент
+
+Rainbow
+== Радуга
+
+Pulse
+== Пульс
+
+
+Style
+== Стиль
+
+First colour
+== Первый цвет
+
+Second colour
+== Второй цвет
+
+Animation speed
+== Скорость анимации
+
+Fog mark before your name
+== Логотип Fog перед ником
+
+Presence server
+== Сервер присутствия
+
+Share your name style with Fog players
+== Делиться стилем ника
+
+Server address
+== Адрес сервера
+
+No presence server set: names are plain and nothing is sent.
+== Сервер присутствия не задан: ники обычные, ничего не отправляется.
+
+Join a server to see other Fog players.
+== Зайди на сервер, чтобы увидеть других игроков Fog.
+
+Sends your name, this server's address and your style. Fog players here: %d
+== Отправляются ник, адрес этого сервера и твой стиль. Игроков Fog здесь: %d
+
+yes
+== за
+
+no
+== против
+
+Vote
+== Голосование
+
+Crosshair
+== Прицел
+
+Fog crosshair
+== Прицел Fog
+
+Also replace crosshairs from game skin files
+== Заменять прицел из скина игры
+
+Cross
+== Крест
+
+Cross and dot
+== Крест и точка
+
+
+Circle and dot
+== Круг и точка
+
+T shape
+== Буквой Т
+
+Chevron
+== Шеврон
+
+
+Thickness
+== Толщина
+
+Gap
+== Зазор
+
+Colour
+== Цвет
+
+Dark outline
+== Тёмная обводка
+
+Opens up while you move fast
+== Раскрывается при быстром движении
+
+Menu cursor
+== Курсор меню
+
+Game arrow
+== Стрелка игры
+
+Hook head
+== Наконечник крюка
+
+Fog mark
+== Знак Fog
+
+Cursor
+== Курсор
+
+Cursor size
+== Размер курсора
+
+Dot
+== Точка
+
+
+Input
+== Ввод
+
+Fast input: your tee reacts about one tick earlier
+== Быстрый ввод (на тик раньше)
+
+Uses your newest key presses for the prediction before they are sent. Rarely the tee jumps back a little when the server disagrees.
+== Использует самые свежие нажатия для предсказания ещё до отправки. Изредка тишку чуть отбрасывает назад, если сервер с ним не согласен.
+
+
+Partial
+== Частично
+
+Predict freeze
+== Предсказывать фриз
+
+Antiping
+== Antiping
+
+Antiping: predict the world ahead of the server
+== Antiping (мир на шаг вперёд)
+
+Other players
+== Другие игроки
+
+Always
+== Всегда
+
+Only when interacting
+== Только при взаимодействии
+
+Interacting and frozen tees
+== При взаимодействии и замороженные
+
+Grenades
+== Гранаты
+
+Weapon projectiles
+== Снаряды оружия
+
+Gunfire
+== Выстрелы
+
+Smoother movement of others
+== Плавнее движение других
+
+Use other players' pre-inputs
+== Учитывать пре-ввод других игроков
+
+How far ahead
+== Насколько вперёд
+
+Delay limit (0 = off)
+== Предел задержки (0 = выкл)
+
+On
+== Вкл
+
+Game sounds
+== Звуки игры
+
+Fog: soft, with an echo
+== Туман: мягко, с эхом
+
+Crisp: bright and dry
+== Чёткий: ярко и сухо
+
+Retro: 8-bit
+== Ретро: 8-бит
+
+Deep: lower
+== Глубокий: ниже
+
+Arcade: higher
+== Аркада: выше
+
+Quiet: for streams
+== Тихий: для стримов
+
+Sound pack
+== Саундпак
+
+Listen: hook, jump, gun
+== Прослушать: крюк, прыжок, выстрел
+
+Clips
+== Клипы
+
+Clip key
+== Клавиша клипа
+
+Clip length
+== Длина клипа
+
+Keep recording the last minutes (needed for clips)
+== Держать запись последних минут (нужно для клипов)
+
+A key saves the last %d seconds of play. Clips stay in demos/replays.
+== Клавиша сохраняет последние %d секунд игры. Клипы лежат в demos/replays.
+
+No clips yet. Set a clip key, play, and press it after something good happens.
+== Клипов пока нет. Назначь клавишу, играй и жми её, когда случится что-то классное.
+
+Watch
+== Смотреть
+
+Video MP4
+== Видео MP4
+
+
+Sure?
+== Точно?
+
+Rendering to videos/%s.mp4
+== Рендерится в videos/%s.mp4
+
+Deleted %s
+== Удалён %s
+
+Clips are on now: recording starts after you rejoin
+== Клипы включены: запись начнётся после перезахода
+
+Clip saved: the last %d seconds
+== Клип сохранён: последние %d секунд
+
+Angle
+== Угол
+
+Animated colours
+== Анимированные цвета
+
+Animated look for my tee
+== Анимированный вид моей тишки
+
+Animated look on
+== Анимация включена
+
+Back
+== Назад
+
+Breathe
+== Дыхание
+
+Checks
+== Клетка
+
+Colours
+== Цвета
+
+Colours everyone sees
+== Цвета, которые видят все
+
+Copies your skin, colours and animated look.
+== Копирует твой скин, цвета и анимацию.
+
+Dots
+== Горошек
+
+Drawn only by your client, on top of your skin.
+== Рисует только твой клиент, поверх скина.
+
+Flow
+== Перелив
+
+Game colour
+== Игровой цвет
+
+Inverted
+== Инверсия
+
+Inverted colours
+== Инверсия цветов
+
+Its own look
+== Свой вид
+
+Like the body
+== Как тело
+
+Marble
+== Мрамор
+
+Moves over the body. Drawn only by your client.
+== Движется по телу. Рисует только твой клиент.
+
+My image
+== Своё
+
+Open folder
+== Открыть папку
+
+Open tee studio
+== Студия тишки
+
+Pattern
+== Узор
+
+Pattern colour
+== Цвет узора
+
+Pick its skin and colours with the You / Dummy switch under the tee.
+== Скин и цвета выбираются переключателем «Ты / Дамми» под тишкой.
+
+Put PNG images into the fog/patterns folder, then refresh.
+== Положи PNG в папку fog/patterns и нажми «Обновить».
+
+Random
+== Случайный
+
+Rings
+== Кольца
+
+Same as you
+== Как у тебя
+
+Skin
+== Скин
+
+Skin and colours are seen by everyone. Animation and patterns are drawn only by your client.
+== Скин и цвета видят все. Анимацию и узоры рисует только твой клиент.
+
+Skin colours
+== Цвета скина
+
+Soft edges
+== Мягкие края
+
+Sparkles
+== Искры
+
+Stripes
+== Полосы
+
+Tee studio
+== Студия тишки
+
+The dummy's skin and colours are sent to the server, so everyone sees them.
+== Скин и цвета дамми уходят на сервер, их видят все.
+
+Waves
+== Волны
+
+Your dummy
+== Твой дамми
+
+Your dummy copies your colours (Dummy tab).
+== Дамми копирует твои цвета (вкладка «Дамми»).
+
+Your dummy copies your skin. Choose "Its own look" on the Dummy tab to pick one.
+== Дамми копирует твой скин. Чтобы выбрать свой, включи «Свой вид» на вкладке «Дамми».
+
+Your skin with the opposite colours, easy to tell apart.
+== Твой скин с противоположными цветами — легко отличить.
+
+Zigzag
+== Зигзаг
+
+[Tee studio]
+You
+== Ты
+
+[Tee studio]
+None
+== Нет
+
+[Tee studio]
+Opacity
+== Прозрачность
+
+[Tee studio]
+Size
+== Размер
+
+[Tee studio]
+Movement
+== Движение
+
+[Tee studio]
+Angle
+== Угол
+
+[Tee studio]
+Speed
+== Скорость
+
+Accessories
+== Аксессуары
+
+Drawn only by your client. Up to 8 at once.
+== Рисует только твой клиент. До 8 сразу.
+
+Your dummy wears your accessories (Dummy tab).
+== Дамми носит твои аксессуары (вкладка «Дамми»).
+
+Show accessories on my tees
+== Показывать аксессуары на моих тишках
+
+
+Wearing
+== Надето
+
+
+
+Animated
+== Анимация
+
+Mirror
+== Отразить
+
+Back to its place
+== На место
+
+Take off
+== Снять
+
+Drag pieces onto the tee. Drag to move, wheel to resize.
+== Перетащи вещь на тишку. Тяни — двигать, колесо — размер.
+
+Broken halo
+== Разбитый нимб
+
+Fallen wings
+== Падшие крылья
+
+Crown of thorns
+== Терновый венец
+
+Crescent moon
+== Полумесяц
+
+Broken heart
+== Разбитое сердце
+
+Rain cloud
+== Дождевое облако
+
+Umbrella
+== Зонт
+
+Paper lantern
+== Бумажный фонарь
+
+Moth
+== Мотылёк
+
+Wisp
+== Огонёк
+
+Headphones
+== Наушники
+
+Veil
+== Вуаль
+
+Cigarette
+== Сигарета
+
+Tears
+== Слёзы
+
+Wilted flower
+== Увядший цветок
+
+Plasters
+== Пластыри
+
+Draw
+== Рисовать
+
+Brush
+== Кисть
+
+Eraser
+== Ластик
+
+Fill
+== Заливка
+
+Picker
+== Пипетка
+
+Undo
+== Отменить
+
+Redo
+== Вернуть
+
+Clear
+== Очистить
+
+Blank
+== Чистая
+
+From skin
+== Из скина
+
+Hardness
+== Жёсткость
+
+Outline
+== Контур
+
+Mirror both halves
+== Зеркально обе половины
+
+Stay inside the tee shape
+== Не выходить за форму тишки
+
+Soft tee shading
+== Мягкая тень тишки
+
+Save as skin
+== Сохранить как скин
+
+Save and wear
+== Сохранить и надеть
+
+Saved to skins/%s.png
+== Сохранено в skins/%s.png
+
+Others see it only if they have the same file.
+== Другие увидят его, только если у них есть такой же файл.
+
+Things
+== Вещи
+
+Auras
+== Ауры
+
+Aura
+== Аура
+
+Dark aura
+== Тёмная аура
+
+Embers
+== Угольки
+
+Stardust
+== Звёздная пыль
+
+Steady
+== Ровная
+
+Flicker
+== Мерцание
+
+Light, shadow or particles around your tee. Drawn only by your client.
+== Свет, тень или частицы вокруг тишки. Рисует только твой клиент.
+
+Drift through the rainbow
+== Переливаться радугой
+
+Coloured outline around the tee
+== Цветная обводка вокруг тишки
+
+My skins
+== Мои
+
+Newest
+== Новые
+
+By name
+== По имени
+
+Normal
+== Обычные
+
+Popular
+== Популярные
+
+Trending
+== В тренде
+
+Wearing %s
+== Надет %s
+
+%d skins
+== Скинов: %d
+
+Loading the catalogue...
+== Загружаю каталог…
+
+Added %s to favourites
+== %s в избранном
+
+Mine
+== Мои
+
+Built-in
+== Встроенные
+
+Met in game
+== Встреченные
+
+Skins you install from DDNet or teedata, or draw yourself, appear here.
+== Здесь будут скины из DDNet и teedata и те, что ты нарисуешь сам.
+
+No built-in skins match.
+== Встроенных скинов по запросу нет.
+
+Skins of players you meet are downloaded here automatically.
+== Сюда сами скачиваются скины игроков, которых ты встречаешь.
+
+Tap the star on a skin to keep it here.
+== Нажми звёздочку на скине, чтобы он был здесь.
+
+Local
+== Локальные
+
+Share your tee studio look (aura, accessories, animation)
+== Делиться видом из студии
+
+Show other Fog players' looks
+== Показывать вид других игроков Fog
+
+Weather
+== Погода
+
+Rain
+== Дождь
+
+Snow
+== Снег
+
+Ash
+== Пепел
+
+Pollen
+== Пыльца
+
+Amount
+== Количество
+
+Darkness
+== Темнота
+
+Camera
+== Камера
+
+Mood
+== Настроение
+
+Fun
+== Приколы
+
+Light and reflections
+== Свет и отражения
+
+Tees are mirrored in the floor
+== Тишки отражаются в полу
+
+Reflection strength
+== Сила отражения
+
+Long soft shadows
+== Длинные мягкие тени
+
+Time of day follows your clock
+== Время суток как на твоих часах
+
+Time of day strength
+== Сила времени суток
+
+Darkness with a light around you
+== Темнота и свет вокруг тебя
+
+Light radius
+== Радиус света
+
+Fog and auras breathe with the music
+== Туман и ауры дышат под музыку
+
+Soft camera
+== Мягкая камера
+
+Dark edges at high speed
+== Тёмные края на скорости
+
+Death and freeze
+== Смерть и фриз
+
+Footprints that melt away
+== Тающие следы
+
+Dust when landing, jumping and stopping
+== Пыль от прыжков и приземлений
+
+Wind lines at high speed
+== Линии ветра на скорости
+
+A flash and sparks where the hook grabs
+== Искры там, где цепляется крюк
+
+Tees crumble into ash when they die
+== Пепел при смерти
+
+Frost on frozen tees, melting into drops
+== Иней при фризе, тает каплями
+
+Thought bubbles above your tee
+== Облачка мыслей над тишкой
+
+Tears of relief and confetti at the finish
+== Слёзы и конфетти на финише
+
+Notes from the headphones accessory
+== Ноты из наушников-аксессуара
+
+[Fog tab]
+Music and lyrics
+== Музыка
+
+[Fog tab]
+Gameplay
+== Игра
+
+[Fog tab]
+Interface
+== Интерфейс
+
+Drop a PNG (skin, asset, pattern), a demo or a map
+== Можно перетащить PNG (скин, ассет, узор), демо или карту
+
+Could not read that picture
+== Не получилось прочитать картинку
+
+Could not write %s
+== Не получилось записать %s
+
+Installed %s and switched it on
+== %s установлен и включён
+
+Where does %s go?
+== Куда положить %s?
+
+It is copied there and switched on right away.
+== Файл скопируется туда и сразу включится.
+
+Game skin
+== Игровой скин
+
+Tee pattern
+== Узор для тишки
+
+Enter: the highlighted one. Esc: skip.
+== Enter — выделенное, Esc — пропустить.
+
+Skip
+== Пропустить
+
+Holidays
+== Праздники
+
+Holiday atmosphere
+== Праздничная атмосфера
+
+By date
+== По дате
+
+New Year
+== Новый год
+
+Halloween
+== Хэллоуин
+
+Valentine's Day
+== День святого Валентина
+
+March 8
+== 8 марта

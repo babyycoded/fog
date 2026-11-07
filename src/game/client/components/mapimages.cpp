@@ -2,6 +2,8 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include "mapimages.h"
 
+#include <game/map/fog_tint.h>
+
 #include <base/dbg.h>
 #include <base/log.h>
 #include <base/math.h>
@@ -58,6 +60,10 @@ void CMapImages::Unload()
 
 void CMapImages::OnMapLoadImpl(class CLayers *pLayers, IMap *pMap)
 {
+	// Fog: the map tint is decided once per map load; the map layers read it too
+	FogMapTint::g_Strength = g_Config.m_FogMapTint / 100.0f;
+	FogMapTint::g_Brightness = g_Config.m_FogMapBrightness / 100.0f;
+
 	Unload();
 
 	int Start;
@@ -146,8 +152,32 @@ void CMapImages::OnMapLoadImpl(class CLayers *pLayers, IMap *pMap)
 					!str_comp(pName, "generic_unhookable") ||
 					!str_comp(pName, "easter");
 			}
-			str_format(aPath, sizeof(aPath), "mapres/%s%s.png", pName, Translated ? "_0.7" : "");
-			m_aTextures[i] = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL, LoadFlag);
+			// Fog: standard tilesets have a recoloured version in fog/mapres
+			bool Loaded = false;
+			if(g_Config.m_FogMapres)
+			{
+				str_format(aPath, sizeof(aPath), "fog/mapres/%s%s.png", pName, Translated ? "_0.7" : "");
+				if(Storage()->FileExists(aPath, IStorage::TYPE_ALL))
+				{
+					m_aTextures[i] = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL, LoadFlag);
+					Loaded = true;
+				}
+			}
+			if(!Loaded)
+			{
+				str_format(aPath, sizeof(aPath), "mapres/%s%s.png", pName, Translated ? "_0.7" : "");
+				CImageInfo ExternalImage;
+				if(g_Config.m_FogMapTint > 0 && Graphics()->LoadPng(ExternalImage, aPath, IStorage::TYPE_ALL) && ExternalImage.m_Format == CImageInfo::FORMAT_RGBA)
+				{
+					FogMapTint::ApplyImage(ExternalImage.m_pData, (size_t)ExternalImage.m_Width * ExternalImage.m_Height);
+					m_aTextures[i] = Graphics()->LoadTextureRawMove(ExternalImage, LoadFlag, aPath);
+				}
+				else
+				{
+					ExternalImage.Free();
+					m_aTextures[i] = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL, LoadFlag);
+				}
+			}
 		}
 		else
 		{
@@ -167,7 +197,15 @@ void CMapImages::OnMapLoadImpl(class CLayers *pLayers, IMap *pMap)
 			{
 				char aTexName[IO_MAX_PATH_LENGTH];
 				str_format(aTexName, sizeof(aTexName), "embedded: %s", pName);
-				m_aTextures[i] = Graphics()->LoadTextureRaw(ImageInfo, LoadFlag, aTexName);
+				if(g_Config.m_FogMapTint > 0)
+				{
+					// tint a copy: the map data itself stays untouched
+					CImageInfo Tinted = ImageInfo.DeepCopy();
+					FogMapTint::ApplyImage(Tinted.m_pData, (size_t)Tinted.m_Width * Tinted.m_Height);
+					m_aTextures[i] = Graphics()->LoadTextureRawMove(Tinted, LoadFlag, aTexName);
+				}
+				else
+					m_aTextures[i] = Graphics()->LoadTextureRaw(ImageInfo, LoadFlag, aTexName);
 				pMap->UnloadData(pImg->m_ImageData);
 			}
 			else

@@ -10,9 +10,17 @@ class CMenusStart : public CComponentInterfaces
 {
 public:
 	void RenderStartMenu(CUIRect MainView);
+	// Fog client start screen (fog/start_screen.cpp)
+	void RenderFogStart(CUIRect MainView);
 
 private:
 	bool CheckHotKey(int Key) const;
+
+	float m_LastFogRender = -100.0f;
+	float m_FogIntroStart = 0.0f;
+	float m_FogHoverY = -1.0f;
+	float m_FogHoverAlpha = 0.0f;
+	float m_FogHoverV = 0.0f;
 };
 
 #endif

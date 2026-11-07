@@ -16,10 +16,16 @@
 // ft2 texture
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_MULTIPLE_MASTERS_H
+#include FT_TRUETYPE_TABLES_H
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <limits>
+#include <map>
+#include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -332,6 +338,19 @@ private:
 	std::vector<FT_Face> m_vFallbackFaces;
 	std::vector<FT_Face> m_vFtFaces;
 
+	// Display font: one face per weight instance, created from the same font data, so the
+	// glyph cache (keyed by face) never mixes weights and nothing has to be cleared.
+	struct SFaceSource
+	{
+		const FT_Byte *m_pData;
+		FT_Long m_Size;
+		FT_Long m_Index;
+	};
+	std::unordered_map<FT_Face, SFaceSource> m_FaceSources;
+	std::vector<FT_Face> m_vDisplayFaces; // faces from fonts/display, selectable by family
+	std::map<std::pair<FT_Face, int>, FT_Face> m_DisplayInstances; // (variable face, weight) -> instance
+	FT_Face m_ActiveDisplayFace = nullptr;
+
 	FT_Face GetFaceByName(const char *pFamilyName)
 	{
 		if(pFamilyName == nullptr || pFamilyName[0] == '\0')
@@ -607,6 +626,11 @@ public:
 		}
 	}
 
+	const uint8_t *TextureData(int TextureIndex) const
+	{
+		return m_apTextureData[TextureIndex];
+	}
+
 	FT_Face DefaultFace() const
 	{
 		return m_DefaultFace;
@@ -617,9 +641,102 @@ public:
 		return m_IconFace;
 	}
 
-	void AddFace(FT_Face Face)
+	void AddFace(FT_Face Face, const FT_Byte *pData, FT_Long Size, FT_Long Index)
 	{
 		m_vFtFaces.push_back(Face);
+		m_FaceSources[Face] = {pData, Size, Index};
+	}
+
+	void AddDisplayFace(FT_Face Face)
+	{
+		m_vDisplayFaces.push_back(Face);
+	}
+
+	std::vector<std::string> DisplayFamilies() const
+	{
+		std::vector<std::string> vFamilies;
+		for(FT_Face Face : m_vDisplayFaces)
+			if(Face->family_name && std::find(vFamilies.begin(), vFamilies.end(), Face->family_name) == vFamilies.end())
+				vFamilies.emplace_back(Face->family_name);
+		std::sort(vFamilies.begin(), vFamilies.end(), [](const std::string &a, const std::string &b) { return str_comp_nocase(a.c_str(), b.c_str()) < 0; });
+		return vFamilies;
+	}
+
+	static int FaceWeight(FT_Face Face)
+	{
+		const TT_OS2 *pOs2 = static_cast<const TT_OS2 *>(FT_Get_Sfnt_Table(Face, FT_SFNT_OS2));
+		if(pOs2 && pOs2->usWeightClass > 0)
+			return pOs2->usWeightClass;
+		return (Face->style_flags & FT_STYLE_FLAG_BOLD) ? 700 : 400;
+	}
+
+	// Picks the display font: a variable font gets an instance at exactly Weight, a family of
+	// static files gets its closest weight. Unknown family: the default font is used.
+	void SelectDisplayFont(FT_Library Library, const char *pFamily, int Weight)
+	{
+		m_ActiveDisplayFace = nullptr;
+		if(!pFamily || !pFamily[0])
+			return;
+		FT_Face Best = nullptr;
+		int BestDiff = 1 << 30;
+		for(FT_Face Face : m_vDisplayFaces)
+		{
+			if(!Face->family_name || str_comp_nocase(Face->family_name, pFamily) != 0)
+				continue;
+			// upright faces win over italics of the same weight
+			const int Diff = std::abs(FaceWeight(Face) - Weight) + ((Face->style_flags & FT_STYLE_FLAG_ITALIC) ? 1000 : 0);
+			if(FT_HAS_MULTIPLE_MASTERS(Face) && !(Face->style_flags & FT_STYLE_FLAG_ITALIC))
+			{
+				Best = Face;
+				break;
+			}
+			if(Diff < BestDiff)
+			{
+				BestDiff = Diff;
+				Best = Face;
+			}
+		}
+		if(!Best)
+			return;
+		if(!FT_HAS_MULTIPLE_MASTERS(Best))
+		{
+			m_ActiveDisplayFace = Best;
+			return;
+		}
+
+		Weight = std::clamp((Weight + 5) / 10 * 10, 1, 1000);
+		const auto Key = std::make_pair(Best, Weight);
+		const auto Found = m_DisplayInstances.find(Key);
+		if(Found != m_DisplayInstances.end())
+		{
+			m_ActiveDisplayFace = Found->second;
+			return;
+		}
+
+		const auto Source = m_FaceSources.find(Best);
+		FT_Face Face;
+		if(Source == m_FaceSources.end() || FT_New_Memory_Face(Library, Source->second.m_pData, Source->second.m_Size, Source->second.m_Index, &Face))
+		{
+			m_ActiveDisplayFace = Best;
+			return;
+		}
+		FT_MM_Var *pMaster = nullptr;
+		if(FT_Get_MM_Var(Face, &pMaster) == 0 && pMaster)
+		{
+			std::vector<FT_Fixed> vCoords(pMaster->num_axis);
+			for(FT_UInt Axis = 0; Axis < pMaster->num_axis; Axis++)
+			{
+				const FT_Var_Axis &VarAxis = pMaster->axis[Axis];
+				vCoords[Axis] = VarAxis.def;
+				if(VarAxis.tag == FT_MAKE_TAG('w', 'g', 'h', 't'))
+					vCoords[Axis] = std::clamp<FT_Fixed>((FT_Fixed)Weight << 16, VarAxis.minimum, VarAxis.maximum);
+			}
+			FT_Set_Var_Design_Coordinates(Face, pMaster->num_axis, vCoords.data());
+			FT_Done_MM_Var(Library, pMaster);
+		}
+		// owned by the FreeType library, freed with it on shutdown
+		m_DisplayInstances[Key] = Face;
+		m_ActiveDisplayFace = Face;
 	}
 
 	bool SetDefaultFaceByName(const char *pFamilyName)
@@ -681,8 +798,12 @@ public:
 		return true;
 	}
 
+	EFontPreset m_CurrentPreset = EFontPreset::DEFAULT_FONT;
+	EFontPreset FontPreset() const { return m_CurrentPreset; }
+
 	void SetFontPreset(EFontPreset FontPreset)
 	{
+		m_CurrentPreset = FontPreset;
 		switch(FontPreset)
 		{
 		case EFontPreset::DEFAULT_FONT:
@@ -690,6 +811,9 @@ public:
 			break;
 		case EFontPreset::ICON_FONT:
 			m_SelectedFace = m_IconFace;
+			break;
+		case EFontPreset::DISPLAY_FONT:
+			m_SelectedFace = m_ActiveDisplayFace;
 			break;
 		}
 	}
@@ -973,6 +1097,8 @@ class CTextRender : public IEngineTextRender
 	FT_Library m_FTLibrary;
 
 	std::vector<STextContainer *> m_vpTextContainers;
+	std::vector<STextCharQuad> m_vGlyphBatch; // scratch for RenderGlyphs
+	std::vector<std::pair<unsigned, int>> m_vGlyphColorOrder; // scratch for RenderGlyphs: packed color, draw index
 	std::vector<int> m_vTextContainerIndices;
 	int m_FirstFreeTextContainerIndex;
 
@@ -1039,7 +1165,7 @@ class CTextRender : public IEngineTextRender
 		}
 	}
 
-	bool LoadFontCollection(const char *pFontName, const FT_Byte *pFontData, FT_Long FontDataSize)
+	bool LoadFontCollection(const char *pFontName, const FT_Byte *pFontData, FT_Long FontDataSize, bool Display = false)
 	{
 		FT_Face FtFaceCollection;
 		FT_Error CollectionLoadError = FT_New_Memory_Face(m_FTLibrary, pFontData, FontDataSize, -1, &FtFaceCollection);
@@ -1063,7 +1189,9 @@ class CTextRender : public IEngineTextRender
 				continue;
 			}
 
-			m_pGlyphMap->AddFace(FtFace);
+			m_pGlyphMap->AddFace(FtFace, pFontData, FontDataSize, FaceIndex);
+			if(Display)
+				m_pGlyphMap->AddDisplayFace(FtFace);
 
 			log_debug("textrender", "Loaded font face %ld '%s %s' from font file '%s'", FaceIndex, FtFace->family_name, FtFace->style_name, pFontName);
 			LoadedAny = true;
@@ -1328,12 +1456,66 @@ public:
 		}
 
 		json_value_free(pJsonData);
+
+		LoadDisplayFonts();
 		return Success;
+	}
+
+	// Every font in fonts/display (game data and the user's own folder) can be picked for
+	// effect text such as lyrics. A user file with the same name overrides the bundled one.
+	void LoadDisplayFonts()
+	{
+		struct SContext
+		{
+			std::vector<std::pair<std::string, int>> m_vFiles; // name, storage type
+		} Context;
+		Storage()->ListDirectory(IStorage::TYPE_ALL, "fonts/display", [](const char *pName, int IsDir, int DirType, void *pUser) {
+			if(IsDir || !(str_endswith_nocase(pName, ".ttf") || str_endswith_nocase(pName, ".otf") || str_endswith_nocase(pName, ".ttc")))
+				return 0;
+			auto &vFiles = static_cast<SContext *>(pUser)->m_vFiles;
+			if(std::none_of(vFiles.begin(), vFiles.end(), [&](const auto &File) { return File.first == pName; }))
+				vFiles.emplace_back(pName, DirType);
+			return 0;
+		},
+			&Context);
+
+		for(const auto &[Name, DirType] : Context.m_vFiles)
+		{
+			char aPath[IO_MAX_PATH_LENGTH];
+			str_format(aPath, sizeof(aPath), "fonts/display/%s", Name.c_str());
+			void *pFontData;
+			unsigned FontDataSize;
+			if(!Storage()->ReadFile(aPath, DirType, &pFontData, &FontDataSize))
+			{
+				log_error("textrender", "Failed to open/read display font '%s'", aPath);
+				continue;
+			}
+			if(LoadFontCollection(aPath, static_cast<FT_Byte *>(pFontData), (FT_Long)FontDataSize, true))
+				m_vpFontData.push_back(pFontData);
+			else
+				free(pFontData);
+		}
+		log_info("textrender", "Loaded %d display fonts", (int)m_pGlyphMap->DisplayFamilies().size());
+	}
+
+	void SetDisplayFont(const char *pFamily, int Weight) override
+	{
+		m_pGlyphMap->SelectDisplayFont(m_FTLibrary, pFamily, Weight);
+	}
+
+	std::vector<std::string> DisplayFontFamilies() const override
+	{
+		return m_pGlyphMap->DisplayFamilies();
 	}
 
 	void SetFontPreset(EFontPreset FontPreset) override
 	{
 		m_pGlyphMap->SetFontPreset(FontPreset);
+	}
+
+	EFontPreset FontPreset() const override
+	{
+		return m_pGlyphMap->FontPreset();
 	}
 
 	void SetFontLanguageVariant(const char *pLanguageFile) override
@@ -2134,6 +2316,150 @@ public:
 
 			TextContainer.m_StringInfo.m_QuadBufferContainerIndex = Graphics()->CreateBufferContainer(&m_DefaultTextContainerInfo);
 			Graphics()->IndicesNumRequiredNotify(TextContainer.m_StringInfo.m_vCharacterQuads.size() * 6);
+		}
+	}
+
+	void GetTextContainerGlyphs(STextContainerIndex TextContainerIndex, std::vector<STextGlyph> &vGlyphs) override
+	{
+		vGlyphs.clear();
+		const STextContainer &TextContainer = GetTextContainer(TextContainerIndex);
+		vGlyphs.reserve(TextContainer.m_StringInfo.m_vCharacterQuads.size());
+		for(const STextCharQuad &Quad : TextContainer.m_StringInfo.m_vCharacterQuads)
+		{
+			// vertices: 0 = bottom left, 1 = bottom right, 2 = top right, 3 = top left
+			STextGlyph Glyph;
+			Glyph.m_TopLeft = vec2(Quad.m_aVertices[3].m_X, Quad.m_aVertices[3].m_Y);
+			Glyph.m_Size = vec2(Quad.m_aVertices[1].m_X - Quad.m_aVertices[0].m_X, Quad.m_aVertices[0].m_Y - Quad.m_aVertices[3].m_Y);
+			Glyph.m_aUVs[0] = Quad.m_aVertices[3].m_U;
+			Glyph.m_aUVs[1] = Quad.m_aVertices[3].m_V;
+			Glyph.m_aUVs[2] = Quad.m_aVertices[1].m_U;
+			Glyph.m_aUVs[3] = Quad.m_aVertices[1].m_V;
+			vGlyphs.push_back(Glyph);
+		}
+	}
+
+	bool GetGlyphMask(const STextGlyph &Glyph, std::vector<uint8_t> &vMask, int &Width, int &Height) override
+	{
+		const int Dim = m_pGlyphMap->TextureDimension();
+		const int X0 = std::clamp((int)std::round(Glyph.m_aUVs[0]), 0, Dim);
+		const int Y0 = std::clamp((int)std::round(Glyph.m_aUVs[1]), 0, Dim);
+		const int X1 = std::clamp((int)std::round(Glyph.m_aUVs[2]), 0, Dim);
+		const int Y1 = std::clamp((int)std::round(Glyph.m_aUVs[3]), 0, Dim);
+		Width = X1 - X0;
+		Height = Y1 - Y0;
+		if(Width <= 0 || Height <= 0)
+			return false;
+		const uint8_t *pData = m_pGlyphMap->TextureData(CGlyphMap::FONT_TEXTURE_FILL);
+		vMask.resize((size_t)Width * Height);
+		for(int y = 0; y < Height; y++)
+			mem_copy(&vMask[(size_t)y * Width], &pData[(size_t)(Y0 + y) * Dim + X0], Width);
+		return true;
+	}
+
+	void RenderGlyphs(const STextGlyphDraw *pDraws, int Num, bool Outline) override
+	{
+		if(Num <= 0)
+			return;
+
+		if(!Graphics()->IsTextBufferingEnabled())
+		{
+			// legacy backends keep glyphs in alpha textures that regular quads can sample
+			Graphics()->FlushVertices();
+			Graphics()->TextureSet(m_pGlyphMap->Texture(Outline ? CGlyphMap::FONT_TEXTURE_OUTLINE : CGlyphMap::FONT_TEXTURE_FILL));
+			const float UVScale = 1.0f / m_pGlyphMap->TextureDimension();
+			Graphics()->QuadsBegin();
+			for(int i = 0; i < Num; i++)
+			{
+				const STextGlyphDraw &Draw = pDraws[i];
+				if(Draw.m_Color.a <= 0.0f || Draw.m_Scale <= 0.0f)
+					continue;
+				Graphics()->SetColor(Draw.m_Color);
+				Graphics()->QuadsSetSubset(Draw.m_Glyph.m_aUVs[0] * UVScale, Draw.m_Glyph.m_aUVs[1] * UVScale, Draw.m_Glyph.m_aUVs[2] * UVScale, Draw.m_Glyph.m_aUVs[3] * UVScale);
+				Graphics()->QuadsSetRotation(Draw.m_Rotation);
+				IGraphics::CQuadItem QuadItem(Draw.m_Center, Draw.m_Glyph.m_Size * Draw.m_Scale);
+				Graphics()->QuadsDraw(&QuadItem, 1);
+			}
+			Graphics()->QuadsEnd();
+			Graphics()->QuadsSetRotation(0.0f);
+			Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+			return;
+		}
+
+		// Modern backends: glyph atlases are single channel and only the text shader reads them,
+		// always as the fill + outline pair (Vulkan binds them as one descriptor of the fill
+		// texture). Build rotated quads ourselves and draw them through that shader:
+		// - fill: per-vertex colors, outline color transparent, one draw call
+		// - outline: the shader takes the outline color as a uniform, so glyphs are grouped by
+		//   color and the fill is made transparent
+		const int FillId = m_pGlyphMap->Texture(CGlyphMap::FONT_TEXTURE_FILL).Id();
+		const int OutlineId = m_pGlyphMap->Texture(CGlyphMap::FONT_TEXTURE_OUTLINE).Id();
+		const int TexDim = m_pGlyphMap->TextureDimension();
+
+		const auto PackColor = [](const ColorRGBA &Color) {
+			const auto Byte = [](float v) { return (unsigned)(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); };
+			return (Byte(Color.r) << 24) | (Byte(Color.g) << 16) | (Byte(Color.b) << 8) | Byte(Color.a);
+		};
+		const auto AddQuad = [&](const STextGlyphDraw &Draw, unsigned PackedColor) {
+			const vec2 Half = Draw.m_Glyph.m_Size * (Draw.m_Scale * 0.5f);
+			const float c = std::cos(Draw.m_Rotation), s = std::sin(Draw.m_Rotation);
+			const auto Corner = [&](float x, float y) { return Draw.m_Center + vec2(x * c - y * s, x * s + y * c); };
+			const vec2 aPos[4] = {Corner(-Half.x, Half.y), Corner(Half.x, Half.y), Corner(Half.x, -Half.y), Corner(-Half.x, -Half.y)};
+			const float U0 = Draw.m_Glyph.m_aUVs[0], V0 = Draw.m_Glyph.m_aUVs[1];
+			const float U1 = Draw.m_Glyph.m_aUVs[2], V1 = Draw.m_Glyph.m_aUVs[3];
+			const float aU[4] = {U0, U1, U1, U0};
+			const float aV[4] = {V1, V1, V0, V0};
+			STextCharQuad &Quad = m_vGlyphBatch.emplace_back();
+			for(int v = 0; v < 4; v++)
+			{
+				Quad.m_aVertices[v].m_X = aPos[v].x;
+				Quad.m_aVertices[v].m_Y = aPos[v].y;
+				Quad.m_aVertices[v].m_U = aU[v];
+				Quad.m_aVertices[v].m_V = aV[v];
+				Quad.m_aVertices[v].m_Color.r = (PackedColor >> 24) & 0xff;
+				Quad.m_aVertices[v].m_Color.g = (PackedColor >> 16) & 0xff;
+				Quad.m_aVertices[v].m_Color.b = (PackedColor >> 8) & 0xff;
+				Quad.m_aVertices[v].m_Color.a = PackedColor & 0xff;
+			}
+		};
+		const auto Flush = [&](const ColorRGBA &TextColor, const ColorRGBA &OutlineColor) {
+			if(m_vGlyphBatch.empty())
+				return;
+			const size_t DataSize = m_vGlyphBatch.size() * sizeof(STextCharQuad);
+			const int BufferObject = Graphics()->CreateBufferObject(DataSize, m_vGlyphBatch.data(), IGraphics::EBufferObjectCreateFlags::BUFFER_OBJECT_CREATE_FLAGS_ONE_TIME_USE_BIT);
+			m_DefaultTextContainerInfo.m_VertBufferBindingIndex = BufferObject;
+			int BufferContainer = Graphics()->CreateBufferContainer(&m_DefaultTextContainerInfo);
+			Graphics()->IndicesNumRequiredNotify(m_vGlyphBatch.size() * 6);
+			Graphics()->TextureClear();
+			Graphics()->RenderText(BufferContainer, (int)m_vGlyphBatch.size(), TexDim, FillId, OutlineId, TextColor, OutlineColor);
+			Graphics()->DeleteBufferContainer(BufferContainer, true);
+			m_vGlyphBatch.clear();
+		};
+
+		m_vGlyphBatch.clear();
+		if(!Outline)
+		{
+			for(int i = 0; i < Num; i++)
+				if(pDraws[i].m_Color.a > 0.0f && pDraws[i].m_Scale > 0.0f)
+					AddQuad(pDraws[i], PackColor(pDraws[i].m_Color));
+			Flush(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f));
+			return;
+		}
+
+		m_vGlyphColorOrder.clear();
+		for(int i = 0; i < Num; i++)
+			if(pDraws[i].m_Color.a > 0.0f && pDraws[i].m_Scale > 0.0f)
+				m_vGlyphColorOrder.emplace_back(PackColor(pDraws[i].m_Color), i);
+		// stable: keeps back-to-front order inside a color group
+		std::stable_sort(m_vGlyphColorOrder.begin(), m_vGlyphColorOrder.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+		for(size_t i = 0; i < m_vGlyphColorOrder.size(); i++)
+		{
+			const unsigned Packed = m_vGlyphColorOrder[i].first;
+			AddQuad(pDraws[m_vGlyphColorOrder[i].second], 0xffffffffu);
+			if(i + 1 == m_vGlyphColorOrder.size() || m_vGlyphColorOrder[i + 1].first != Packed)
+			{
+				const ColorRGBA Color(((Packed >> 24) & 0xff) / 255.0f, ((Packed >> 16) & 0xff) / 255.0f, ((Packed >> 8) & 0xff) / 255.0f, (Packed & 0xff) / 255.0f);
+				Flush(ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f), Color);
+			}
 		}
 	}
 

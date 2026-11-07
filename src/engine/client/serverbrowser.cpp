@@ -471,6 +471,17 @@ void CServerBrowser::Filter()
 			Filtered = true;
 		else if(g_Config.m_BrFilterLogin && Info.m_RequiresLogin)
 			Filtered = true;
+		else if(g_Config.m_FogBrDifficulty && !FogNameHasAny(Info.m_aName, FOG_DIFFICULTIES, std::size(FOG_DIFFICULTIES), g_Config.m_FogBrDifficulty))
+			Filtered = true;
+		else if(g_Config.m_FogBrCategory && !FogNameHasAny(Info.m_aName, FOG_CATEGORIES, std::size(FOG_CATEGORIES), g_Config.m_FogBrCategory))
+			Filtered = true;
+		else if(g_Config.m_FogBrTeam == FOG_TEAM_ALONE && !str_find_nocase(Info.m_aName, "Solo"))
+			Filtered = true;
+		else if(g_Config.m_FogBrTeam == FOG_TEAM_DUMMY && !str_find_nocase(Info.m_aName, "Dummy"))
+			Filtered = true;
+		// team maps: the difficulty pools plus ddmax and oldschool (bits 0-3 of the difficulties, 4-5 of the categories)
+		else if(g_Config.m_FogBrTeam == FOG_TEAM_GROUP && !FogNameHasAny(Info.m_aName, FOG_DIFFICULTIES, std::size(FOG_DIFFICULTIES), 15) && !FogNameHasAny(Info.m_aName, FOG_CATEGORIES, std::size(FOG_CATEGORIES), (1 << 4) | (1 << 5)))
+			Filtered = true;
 		else
 		{
 			if(!Communities().empty())

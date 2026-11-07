@@ -13,6 +13,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class CScrollRegion;
@@ -424,6 +425,7 @@ private:
 	const void *m_pLastActiveScrollbar = nullptr;
 	int m_ScrollbarValue = 0;
 	float m_ActiveScrollbarOffset = 0.0f;
+	std::unordered_map<const void *, vec2> m_FogKnobAnim; // Fog slider knob size spring (size, velocity)
 	float m_ProgressSpinnerOffset = 0.0f;
 	class CValueSelectorState
 	{
@@ -480,6 +482,7 @@ private:
 		CUIRect m_Rect;
 		void *m_pContext;
 		FPopupMenuFunction m_pfnFunc;
+		float m_OpenTime = 0.0f; // Fog: popups unfold from their anchor
 	};
 	std::vector<SPopupMenu> m_vPopupMenus;
 	FPopupMenuClosedCallback m_pfnPopupMenuClosedCallback = nullptr;
@@ -638,6 +641,7 @@ public:
 	static vec2 CalcAlignedCursorPos(const CUIRect *pRect, vec2 TextSize, int Align, const float *pBiggestCharHeight = nullptr);
 
 	CLabelResult DoLabel(const CUIRect *pRect, const char *pText, float Size, int Align, const SLabelProperties &LabelProps = {}) const;
+	CLabelResult DoLabelImpl(const CUIRect *pRect, const char *pText, float Size, int Align, const SLabelProperties &LabelProps) const;
 	CLabelResult DoLabel_AutoLineSize(const char *pText, float FontSize, int Align, CUIRect *pRect, float LineSize, const SLabelProperties &LabelProps = {}) const;
 
 	void DoLabel(CUIElement::SUIElementRect &RectEl, const CUIRect *pRect, const char *pText, float Size, int Align, const SLabelProperties &LabelProps = {}, int StrLen = -1, const CTextCursor *pReadCursor = nullptr) const;

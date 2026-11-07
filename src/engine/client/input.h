@@ -10,6 +10,7 @@
 #include <SDL_events.h>
 #include <SDL_joystick.h>
 
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -109,7 +110,7 @@ private:
 	void HandleTouchMotionEvent(const SDL_TouchFingerEvent &Event);
 	void HandleTextEditingEvent(const char *pText, int Start, int Length);
 
-	char m_aDropFile[IO_MAX_PATH_LENGTH];
+	std::deque<std::string> m_DropFiles; // Fog: several files dropped at once are all kept
 
 	void ProcessSystemMessage(SDL_SysWMmsg *pMsg);
 

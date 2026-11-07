@@ -13,6 +13,10 @@ class CUIRect
 	static IGraphics *ms_pGraphics;
 
 public:
+	// Optional restyling of Draw() (Fog client glass menus). Returns true when it drew the rect.
+	using FDrawHook = bool (*)(const CUIRect &Rect, const ColorRGBA &Color, int Corners, float Rounding);
+	static FDrawHook ms_pfnDrawHook;
+
 	static void Init(IGraphics *pGraphics) { ms_pGraphics = pGraphics; }
 
 	float x, y, w, h;

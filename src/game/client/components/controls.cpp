@@ -524,3 +524,18 @@ float CControls::GetMaxMouseDistance() const
 	float MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
 	return std::min(FollowFactor != 0.0f ? CameraMaxDistance / FollowFactor + DeadZone : MaxDistance, MaxDistance);
 }
+
+CNetObj_PlayerInput CControls::LiveInput(int Dummy) const
+{
+	CNetObj_PlayerInput Input = m_aInputData[Dummy];
+	Input.m_Direction = 0;
+	if(m_aInputDirectionLeft[Dummy] && !m_aInputDirectionRight[Dummy])
+		Input.m_Direction = -1;
+	if(!m_aInputDirectionLeft[Dummy] && m_aInputDirectionRight[Dummy])
+		Input.m_Direction = 1;
+	Input.m_TargetX = (int)m_aMousePos[Dummy].x;
+	Input.m_TargetY = (int)m_aMousePos[Dummy].y;
+	if(!Input.m_TargetX && !Input.m_TargetY)
+		Input.m_TargetX = 1;
+	return Input;
+}

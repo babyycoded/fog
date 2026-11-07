@@ -135,14 +135,27 @@ void CGameClient::OnConsoleInit()
 					      &m_RaceDemo,
 					      &m_MapSounds,
 					      &m_Censor,
+					      &m_FogMusic, // doesn't render anything, polls MPRIS and fetches lyrics
+					      &m_FogPresence, // doesn't render anything, heartbeats to the Fog presence server
+					      &m_FogTeeStyle, // doesn't render anything, keeps the studio look and the dummy sync
+					      &m_FogAccessories, // draws through CRenderTools::RenderTee for your own tees
+					      &m_FogPainter, // the tee studio's drawing canvas
+					      &m_FogSkinCatalog, // skins from ddnet.org and teedata.net for the studio
 					      &m_Background, // render instead of m_MapLayersBackground when g_Config.m_ClOverlayEntities == 100
 					      &m_MapLayersBackground, // first to render
+					      &m_FogAtmosphereBack, // mist banks behind the tiles
+					      &m_FogLyrics, // lyrics inside the map, behind tees and foreground
 					      &m_Particles.m_RenderTrail,
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
 					      &m_Ghost,
+					      &m_FogTrails, // afterimages behind the tees
+					      &m_FogFxBack, // reflections, shadows, footprints, dust (and the fx simulation)
 					      &m_Players,
 					      &m_MapLayersForeground,
+					      &m_FogLyricsFront, // lyrics above everything (fog_lyrics_layer 1)
+					      &m_FogAtmosphereFront, // thin mist in front, clear around you
+					      &m_FogFxFront, // weather, time of day, flashlight, frost, thoughts, confetti
 					      &m_Particles.m_RenderExplosions,
 					      &m_NamePlates,
 					      &m_Particles.m_RenderExtra,
@@ -150,6 +163,7 @@ void CGameClient::OnConsoleInit()
 					      &m_FreezeBars,
 					      &m_DamageInd,
 					      &m_Hud,
+					      &m_FogMusicWidget,
 					      &m_Spectator,
 					      &m_Emoticon,
 					      &m_InfoMessages,
@@ -1509,6 +1523,7 @@ void CGameClient::ProcessEvents()
 		{
 			const CNetEvent_Death *pEvent = (const CNetEvent_Death *)Item.m_pData;
 			m_Effects.PlayerDeath(vec2(pEvent->m_X, pEvent->m_Y), pEvent->m_ClientId, Alpha);
+			CFogFx::OnDeath(vec2(pEvent->m_X, pEvent->m_Y));
 		}
 		else if(Item.m_Type == NETEVENTTYPE_SOUNDWORLD)
 		{
@@ -2682,6 +2697,10 @@ void CGameClient::OnPredict()
 		pDummyChar = m_PredictedWorld.GetCharacterById(m_aLocalIds[!g_Config.m_ClDummy]);
 
 	int PredictionTick = Client()->GetPredictionTick();
+	// Fog fast input: the newest predicted tick uses the input as it is right now instead of the
+	// last sent one, so your tee answers about one tick earlier (like T-Client's fast input)
+	const bool FastInput = g_Config.m_FogFastInput && !m_IsDummySwapping && m_Snap.m_pLocalCharacter && !(m_Controls.m_aInputData[g_Config.m_ClDummy].m_PlayerFlags & PLAYERFLAG_CHATTING);
+	CNetObj_PlayerInput FastInputData = m_Controls.LiveInput(g_Config.m_ClDummy);
 	// predict
 	for(int Tick = Client()->GameTick(g_Config.m_ClDummy) + 1; Tick <= Client()->PredGameTick(g_Config.m_ClDummy); Tick++)
 	{
@@ -2708,6 +2727,8 @@ void CGameClient::OnPredict()
 
 		// apply inputs and tick
 		CNetObj_PlayerInput *pInputData = (CNetObj_PlayerInput *)Client()->GetInput(Tick, m_IsDummySwapping);
+		if(FastInput && pInputData && Tick == Client()->PredGameTick(g_Config.m_ClDummy))
+			pInputData = &FastInputData;
 		CNetObj_PlayerInput *pDummyInputData = !pDummyChar ? nullptr : (CNetObj_PlayerInput *)Client()->GetInput(Tick, m_IsDummySwapping ^ 1);
 		bool DummyFirst = pInputData && pDummyInputData && pDummyChar->GetCid() < pLocalChar->GetCid();
 

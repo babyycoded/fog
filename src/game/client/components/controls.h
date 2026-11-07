@@ -52,6 +52,8 @@ public:
 	virtual void OnPlayerDeath();
 
 	int SnapInput(int *pData);
+	// Fog fast input: the input as it is right now, before it is sent with the next tick
+	CNetObj_PlayerInput LiveInput(int Dummy) const;
 	void ClampMousePos();
 	void ResetInput(int Dummy);
 

@@ -51,6 +51,8 @@ class CInfoMessages : public CComponent
 		STextContainerIndex m_TimeTextContainerIndex;
 		STextContainerIndex m_DiffTextContainerIndex;
 		bool m_RecordPersonal;
+
+		float m_FogWidth = 0.0f; // Fog: row width measured last frame, for the glass pill
 	};
 
 	CInfoMsg m_aInfoMsgs[MAX_INFOMSGS];
@@ -58,8 +60,9 @@ class CInfoMessages : public CComponent
 
 	CInfoMsg CreateInfoMsg(EType Type);
 	void AddInfoMsg(const CInfoMsg &InfoMsg);
-	void RenderKillMsg(const CInfoMsg &InfoMsg, float x, float y);
-	void RenderFinishMsg(const CInfoMsg &InfoMsg, float x, float y);
+	// both return the left edge of what they drew
+	float RenderKillMsg(const CInfoMsg &InfoMsg, float x, float y);
+	float RenderFinishMsg(const CInfoMsg &InfoMsg, float x, float y);
 
 	void OnTeamKillMessage(const struct CNetMsg_Sv_KillMsgTeam *pMsg);
 	void OnKillMessage(const struct CNetMsg_Sv_KillMsg *pMsg);

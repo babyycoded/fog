@@ -3,6 +3,8 @@
 
 #include "camera.h"
 
+#include <game/client/components/fog/fx.h>
+
 #include "controls.h"
 
 #include <base/log.h>
@@ -341,7 +343,7 @@ void CCamera::OnRender()
 		if(GameClient()->m_Snap.m_SpecInfo.m_Active)
 			m_Center = GameClient()->m_Snap.m_SpecInfo.m_Position + m_aDyncamCurrentCameraOffset[g_Config.m_ClDummy];
 		else
-			m_Center = GameClient()->m_LocalCharacterPos + m_aDyncamCurrentCameraOffset[g_Config.m_ClDummy];
+			m_Center = GameClient()->m_LocalCharacterPos + m_aDyncamCurrentCameraOffset[g_Config.m_ClDummy] + FogCameraLag();
 	}
 
 	if(m_ForceFreeview && m_CamType == CAMTYPE_SPEC)

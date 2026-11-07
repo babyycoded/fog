@@ -1,6 +1,7 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include "infomessages.h"
+#include "fog/glass.h"
 
 #include <base/time.h>
 
@@ -307,7 +308,7 @@ void CInfoMessages::OnRaceFinishMessage(const CNetMsg_Sv_RaceFinish *pMsg)
 	AddInfoMsg(Finish);
 }
 
-void CInfoMessages::RenderKillMsg(const CInfoMsg &InfoMsg, float x, float y)
+float CInfoMessages::RenderKillMsg(const CInfoMsg &InfoMsg, float x, float y)
 {
 	ColorRGBA TextColor;
 	if(InfoMsg.m_VictimDDTeam)
@@ -391,9 +392,13 @@ void CInfoMessages::RenderKillMsg(const CInfoMsg &InfoMsg, float x, float y)
 			TextRender()->RenderTextContainer(InfoMsg.m_KillerTextContainerIndex, TextColor, TextRender()->DefaultTextOutlineColor(), x, y + (ROW_HEIGHT - FONT_SIZE) / 2.0f);
 		}
 	}
+	// a suicide draws no killer; without a weapon there is no weapon either
+	if(InfoMsg.m_aVictimIds[0] == InfoMsg.m_KillerId)
+		return x + 52.0f + (InfoMsg.m_Weapon < 0 ? 32.0f : 0.0f);
+	return x;
 }
 
-void CInfoMessages::RenderFinishMsg(const CInfoMsg &InfoMsg, float x, float y)
+float CInfoMessages::RenderFinishMsg(const CInfoMsg &InfoMsg, float x, float y)
 {
 	// render time diff
 	if(InfoMsg.m_DiffTextContainerIndex.Valid())
@@ -430,11 +435,16 @@ void CInfoMessages::RenderFinishMsg(const CInfoMsg &InfoMsg, float x, float y)
 	x -= 24.0f;
 	const int Emote = InfoMsg.m_RecordPersonal ? EMOTE_HAPPY : EMOTE_NORMAL;
 	RenderTools()->RenderIdleTeeAtCenter(&InfoMsg.m_apVictimManagedTeeRenderInfos[0]->TeeRenderInfo(), vec2(x, y + ROW_HEIGHT / 2.0f), Emote, vec2(-1, 0));
+	return x - 24.0f;
 }
 
 void CInfoMessages::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+		return;
+
+	// Fog: the Esc menu owns the screen; the HUD steps aside while it is open
+	if(g_Config.m_FogUi && g_Config.m_FogUiMenus && GameClient()->m_Menus.IsActive() && Client()->State() == IClient::STATE_ONLINE)
 		return;
 
 	const float Height = 1.5f * 400.0f * 3.0f;
@@ -451,7 +461,8 @@ void CInfoMessages::OnRender()
 	const float StartX = Width - 10.0f;
 	const float StartY = 30.0f + (Showfps ? 100.0f : 0.0f) + (g_Config.m_ClShowpred && Client()->State() != IClient::STATE_DEMOPLAYBACK ? 100.0f : 0.0f);
 
-	float y = StartY;
+	// stay below the Fog now playing card when it sits in the top right corner
+	float y = std::max(StartY, GameClient()->m_FogMusicWidget.TopRightBottom() * Height + 10.0f);
 	for(int i = 1; i <= MAX_INFOMSGS; i++)
 	{
 		CInfoMsg &InfoMsg = m_aInfoMsgs[(m_InfoMsgCurrent + i) % MAX_INFOMSGS];
@@ -467,15 +478,40 @@ void CInfoMessages::OnRender()
 
 		CreateTextContainersIfNotCreated(InfoMsg);
 
-		if(InfoMsg.m_Type == EType::TYPE_KILL && g_Config.m_ClShowKillMessages)
+		const bool Kill = InfoMsg.m_Type == EType::TYPE_KILL && g_Config.m_ClShowKillMessages;
+		const bool Finish = InfoMsg.m_Type == EType::TYPE_FINISH && g_Config.m_ClShowFinishMessages;
+		if(!Kill && !Finish)
+			continue;
+
+		// Fog: each event is a smoked glass pill that springs in from the right and slides out at the end
+		float X = StartX;
+		if(g_Config.m_FogHud)
 		{
-			RenderKillMsg(InfoMsg, StartX, y);
-			y += ROW_HEIGHT;
+			const float Age = (Client()->GameTick(g_Config.m_ClDummy) - InfoMsg.m_Tick + Client()->IntraGameTick(g_Config.m_ClDummy)) / (float)Client()->GameTickSpeed();
+			if(g_Config.m_FogAnim)
+			{
+				const float Speed = std::clamp(g_Config.m_FogAnimSpeed / 100.0f, 0.1f, 10.0f);
+				X += (1.0f - FogEaseOutBack(std::min(Age * 4.0f * Speed, 1.0f))) * 80.0f;
+				if(Age > 9.6f)
+					X += std::pow((Age - 9.6f) / 0.4f, 2.0f) * (InfoMsg.m_FogWidth + 60.0f);
+			}
+			if(InfoMsg.m_FogWidth > 0.0f)
+			{
+				const float PillH = ROW_HEIGHT - 10.0f;
+				const float PillX = X - InfoMsg.m_FogWidth - 16.0f, PillW = InfoMsg.m_FogWidth + 24.0f;
+				const bool Personal = Finish && InfoMsg.m_RecordPersonal;
+				Graphics()->TextureClear();
+				const ColorRGBA Top = Personal ? ColorRGBA(0.14f, 0.20f, 0.18f, 0.62f) : ColorRGBA(0.10f, 0.11f, 0.14f, 0.55f);
+				const ColorRGBA Bottom = Personal ? ColorRGBA(0.08f, 0.12f, 0.11f, 0.55f) : ColorRGBA(0.06f, 0.07f, 0.09f, 0.48f);
+				Graphics()->DrawRect4(PillX, y + 5.0f, PillW, PillH, Top, Top, Bottom, Bottom, IGraphics::CORNER_ALL, PillH / 2.0f);
+				Graphics()->DrawRect(PillX + PillH / 2.0f, y + 6.0f, PillW - PillH, 1.5f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.12f), IGraphics::CORNER_NONE, 0.0f);
+				Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+			}
+			X -= 6.0f;
 		}
-		else if(InfoMsg.m_Type == EType::TYPE_FINISH && g_Config.m_ClShowFinishMessages)
-		{
-			RenderFinishMsg(InfoMsg, StartX, y);
-			y += ROW_HEIGHT;
-		}
+
+		const float Left = Kill ? RenderKillMsg(InfoMsg, X, y) : RenderFinishMsg(InfoMsg, X, y);
+		InfoMsg.m_FogWidth = X - Left;
+		y += ROW_HEIGHT;
 	}
 }

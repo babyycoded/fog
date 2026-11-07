@@ -3,6 +3,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_HUD_H
 #define GAME_CLIENT_COMPONENTS_HUD_H
 #include <engine/client.h>
+#include <engine/console.h>
 #include <engine/shared/protocol.h>
 #include <engine/textrender.h>
 
@@ -108,6 +109,7 @@ class CHud : public CComponent
 	static constexpr float MOVEMENT_INFORMATION_LINE_HEIGHT = 8.0f;
 
 public:
+	int FogFinishTick() const { return m_FinishTimeLastReceivedTick; }
 	CHud();
 	int Sizeof() const override { return sizeof(*this); }
 
@@ -116,6 +118,13 @@ public:
 	void OnReset() override;
 	void OnRender() override;
 	void OnInit() override;
+	void OnConsoleInit() override;
+	static void ConFogHudPreview(IConsole::IResult *pResult, void *pUserData);
+	static void ConFogClip(IConsole::IResult *pResult, void *pUserData);
+	void FogToast(const char *pText);
+	void FogRenderToast();
+	char m_aFogToast[128] = "";
+	float m_FogToastTime = -100.0f;
 	void OnNewSnapshot() override;
 
 	// DDRace
@@ -126,6 +135,14 @@ public:
 private:
 	void RenderRecord();
 	void RenderDDRaceEffects();
+	// Fog HUD (fog/hud.cpp): race timer capsule, checkpoint chip, finish moment, records card
+	void FogRenderTimer();
+	void FogRenderRaceEffects();
+	void FogRenderRecord();
+	void FogRenderPlayerState(int ClientId);
+	float m_FogWeaponX = -1.0f, m_FogWeaponV = 0.0f;
+	void FogRenderScoreHud(const CNetObj_PlayerInfo *const *ppPlayerInfo, const int *pPos, const char (*paScore)[16], int Local);
+	float FogSecondsSince(int Tick) const;
 	float m_TimeCpDiff;
 	float m_aPlayerRecord[NUM_DUMMIES];
 	float m_FinishTimeDiff;

@@ -10,6 +10,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
 enum
 {
@@ -61,6 +63,7 @@ enum class EFontPreset
 {
 	DEFAULT_FONT,
 	ICON_FONT,
+	DISPLAY_FONT, // heavy rounded face for large effect text (falls back to the default font)
 };
 
 enum ETextCursorSelectionMode
@@ -190,12 +193,35 @@ struct STextSizeProperties
 	int *m_pLineCount = nullptr;
 };
 
+// A single glyph of a text container, in the container's layout coordinates.
+struct STextGlyph
+{
+	vec2 m_TopLeft;
+	vec2 m_Size;
+	float m_aUVs[4]; // u0, v0 (top left), u1, v1 (bottom right) in atlas texels: the atlas can grow, so never normalize these when caching
+};
+
+// One glyph draw with a free transform, used by effects such as world-space lyrics.
+struct STextGlyphDraw
+{
+	STextGlyph m_Glyph;
+	vec2 m_Center;
+	float m_Scale = 1.0f;
+	float m_Rotation = 0.0f;
+	ColorRGBA m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+};
+
 class ITextRender : public IInterface
 {
 	MACRO_INTERFACE("textrender")
 public:
 	virtual bool LoadFonts() = 0;
 	virtual void SetFontPreset(EFontPreset FontPreset) = 0;
+	virtual EFontPreset FontPreset() const = 0;
+	// Display fonts: everything in fonts/display. The family is used by EFontPreset::DISPLAY_FONT,
+	// at Weight (100..1000) for variable fonts or the closest weight of a static family.
+	virtual void SetDisplayFont(const char *pFamily, int Weight) = 0;
+	virtual std::vector<std::string> DisplayFontFamilies() const = 0;
 	virtual void SetFontLanguageVariant(const char *pLanguageFile) = 0;
 
 	virtual void SetRenderFlags(unsigned Flags) = 0;
@@ -222,6 +248,13 @@ public:
 	virtual void RenderTextContainer(STextContainerIndex TextContainerIndex, const ColorRGBA &TextColor, const ColorRGBA &TextOutlineColor, float X, float Y) = 0;
 
 	virtual STextBoundingBox GetBoundingBoxTextContainer(STextContainerIndex TextContainerIndex) = 0;
+
+	// Glyph-level access: read the laid-out glyph quads of a container and draw glyphs with
+	// their own position, rotation and scale. Outline selects the outline (dilated) atlas.
+	virtual void GetTextContainerGlyphs(STextContainerIndex TextContainerIndex, std::vector<STextGlyph> &vGlyphs) = 0;
+	virtual void RenderGlyphs(const STextGlyphDraw *pDraws, int Num, bool Outline) = 0;
+	// Copies a glyph's coverage mask (fill atlas, one byte per texel) for CPU effects like blur.
+	virtual bool GetGlyphMask(const STextGlyph &Glyph, std::vector<uint8_t> &vMask, int &Width, int &Height) = 0;
 
 	virtual void UploadEntityLayerText(const CImageInfo &TextImage, int TexSubWidth, int TexSubHeight, const char *pText, int Length, float x, float y, int FontSize) = 0;
 	virtual int AdjustFontSize(const char *pText, int TextLength, int MaxSize, int MaxWidth) const = 0;

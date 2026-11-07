@@ -351,6 +351,24 @@ public:
 
 	static constexpr const char *SEARCH_EXCLUDE_TOKEN = ";";
 
+	// Fog: DDNet names servers after the map pool they run ("DDNet GER - Brutal")
+	static constexpr const char *FOG_DIFFICULTIES[] = {"Novice", "Moderate", "Brutal", "Insane"};
+	static constexpr const char *FOG_CATEGORIES[] = {"Solo", "Dummy", "Race", "Fun", "DDmaX", "Oldschool"};
+	enum
+	{
+		FOG_TEAM_ANY = 0,
+		FOG_TEAM_ALONE, // solo maps
+		FOG_TEAM_DUMMY, // one player and a dummy
+		FOG_TEAM_GROUP, // team maps: novice to insane, ddmax, oldschool
+	};
+	static bool FogNameHasAny(const char *pName, const char *const *ppWords, int Num, int Mask)
+	{
+		for(int i = 0; i < Num; i++)
+			if((Mask & (1 << i)) && str_find_nocase(pName, ppWords[i]))
+				return true;
+		return false;
+	}
+
 	virtual void Refresh(int Type, bool Force = false) = 0;
 	virtual bool IsRefreshing() const = 0;
 	virtual bool IsGettingServerlist() const = 0;

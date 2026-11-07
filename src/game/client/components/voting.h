@@ -46,6 +46,9 @@ public:
 	void OnMessage(int MsgType, void *pRawMsg) override;
 
 	void Render();
+	void FogRender(); // fog/hud.cpp: the vote as a glass card
+	void FogPreview(); // a fake 20 second vote to look at the card (fog_hud_preview 4)
+	float m_FogYesShown = 0.0f, m_FogYesV = 0.0f, m_FogNoShown = 0.0f, m_FogNoV = 0.0f;
 
 	void CallvoteSpectate(int ClientId, const char *pReason, bool ForceVote = false);
 	void CallvoteKick(int ClientId, const char *pReason, bool ForceVote = false);

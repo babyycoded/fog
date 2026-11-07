@@ -6,6 +6,7 @@
 #include "camera.h"
 #include "controls.h"
 #include "voting.h"
+#include "fog/cursor.h"
 
 #include <base/color.h>
 #include <base/time.h>
@@ -372,6 +373,12 @@ void CHud::RenderScoreHud()
 				}
 			}
 
+			if(g_Config.m_FogHud)
+			{
+				FogRenderScoreHud(apPlayerInfo, aPos, aScore, Local);
+				return;
+			}
+
 			bool RecreateScores = str_comp(aScore[0], m_aScoreInfo[0].m_aScoreText) != 0 || str_comp(aScore[1], m_aScoreInfo[1].m_aScoreText) != 0 || m_LastLocalClientId != GameClient()->m_Snap.m_LocalClientId;
 			m_LastLocalClientId = GameClient()->m_Snap.m_LocalClientId;
 
@@ -650,6 +657,14 @@ void CHud::RenderCursor()
 			Alpha /= 2.0f;
 	}
 
+	if(FogUseCrosshair())
+	{
+		float Speed = 0.0f;
+		if(GameClient()->m_Snap.m_LocalClientId >= 0)
+			Speed = length(GameClient()->m_aClients[GameClient()->m_Snap.m_LocalClientId].m_Predicted.m_Vel) * Client()->GameTickSpeed();
+		FogDrawCrosshair(Graphics(), TargetPos, Alpha, Speed);
+		return;
+	}
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
 	Graphics()->TextureSet(GameClient()->m_GameSkin.m_aSpriteWeaponCursors[CurWeapon]);
 	Graphics()->RenderQuadContainerAsSprite(m_HudQuadContainerIndex, m_aCursorOffset[CurWeapon], TargetPos.x, TargetPos.y);
@@ -843,6 +858,11 @@ void CHud::PreparePlayerStateQuads()
 
 void CHud::RenderPlayerState(const int ClientId)
 {
+	if(g_Config.m_FogHud)
+	{
+		FogRenderPlayerState(ClientId);
+		return;
+	}
 	Graphics()->SetColor(1.f, 1.f, 1.f, 1.f);
 
 	// pCharacter contains the predicted character for local players or the last snap for players who are spectated
@@ -1671,6 +1691,10 @@ void CHud::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
+	// Fog: the Esc menu owns the screen; the HUD steps aside while it is open
+	if(g_Config.m_FogUi && g_Config.m_FogUiMenus && GameClient()->m_Menus.IsActive() && Client()->State() == IClient::STATE_ONLINE)
+		return;
+
 	if(!GameClient()->m_Snap.m_pGameInfoObj)
 		return;
 
@@ -1696,7 +1720,10 @@ void CHud::OnRender()
 			}
 			RenderSpectatorCount();
 			RenderMovementInformation();
-			RenderDDRaceEffects();
+			if(g_Config.m_FogHud)
+				FogRenderRaceEffects();
+			else
+				RenderDDRaceEffects();
 		}
 		else if(GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
@@ -1718,7 +1745,12 @@ void CHud::OnRender()
 		}
 
 		if(g_Config.m_ClShowhudTimer)
-			RenderGameTimer();
+		{
+			if(g_Config.m_FogHud)
+				FogRenderTimer();
+			else
+				RenderGameTimer();
+		}
 		RenderPauseNotification();
 		RenderSuddenDeath();
 		if(g_Config.m_ClShowhudScore)
@@ -1729,10 +1761,16 @@ void CHud::OnRender()
 		RenderLocalTime((m_Width / 7) * 3);
 		if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
 			RenderConnectionWarning();
+		FogRenderToast();
 		RenderTeambalanceWarning();
 		GameClient()->m_Voting.Render();
 		if(g_Config.m_ClShowRecord)
-			RenderRecord();
+		{
+			if(g_Config.m_FogHud)
+				FogRenderRecord();
+			else
+				RenderRecord();
+		}
 	}
 	RenderCursor();
 }

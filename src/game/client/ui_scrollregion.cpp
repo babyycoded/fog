@@ -216,7 +216,15 @@ void CScrollRegion::DrawBackground(const CUIRect &ScrollbarBg)
 			int Corners = m_Params.m_ScrollHorizontal ? IGraphics::CORNER_B : IGraphics::CORNER_R;
 			ScrollbarBg.Draw(m_Params.m_ScrollbarBgColor, Corners, 4.0f);
 		}
-		if(m_Params.m_RailBgColor.a > 0.0f)
+		if(m_Params.m_RailBgColor.a > 0.0f && CUIRect::ms_pfnDrawHook != nullptr)
+		{
+			Ui()->Graphics()->TextureClear();
+			if(m_Params.m_ScrollHorizontal)
+				Ui()->Graphics()->DrawRect(m_RailRect.x, m_RailRect.y + m_RailRect.h / 2.0f - 1.0f, m_RailRect.w, 2.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.05f), IGraphics::CORNER_ALL, 1.0f);
+			else
+				Ui()->Graphics()->DrawRect(m_RailRect.x + m_RailRect.w / 2.0f - 1.0f, m_RailRect.y, 2.0f, m_RailRect.h, ColorRGBA(1.0f, 1.0f, 1.0f, 0.05f), IGraphics::CORNER_ALL, 1.0f);
+		}
+		else if(m_Params.m_RailBgColor.a > 0.0f)
 		{
 			float Rounding = m_Params.m_ScrollHorizontal ? m_RailRect.h / 2.0f : m_RailRect.w / 2.0f;
 			m_RailRect.Draw(m_Params.m_RailBgColor, IGraphics::CORNER_ALL, Rounding);
@@ -338,6 +346,20 @@ void CScrollRegion::DoSlider()
 	m_ScrollPos = std::clamp(m_ScrollPos, 0.0f, MaxScroll());
 	m_ContentScrollOffset = -m_ScrollPos;
 
+	if(CUIRect::ms_pfnDrawHook != nullptr)
+	{
+		// Fog: a slim frosted thumb that widens under the cursor
+		const bool Active = Ui()->CheckActiveItem(pId), Hot = Ui()->HotItem() == pId;
+		const float Thick = Active || Hot ? 5.0f : 3.0f;
+		CUIRect Thumb = Slider;
+		if(m_Params.m_ScrollHorizontal)
+			Thumb.h = Thick, Thumb.y = Slider.y + (Slider.h - Thick) / 2.0f;
+		else
+			Thumb.w = Thick, Thumb.x = Slider.x + (Slider.w - Thick) / 2.0f;
+		Ui()->Graphics()->TextureClear();
+		Ui()->Graphics()->DrawRect(Thumb.x, Thumb.y, Thumb.w, Thumb.h, ColorRGBA(0.90f, 0.93f, 0.96f, Active ? 0.75f : (Hot ? 0.55f : 0.30f)), IGraphics::CORNER_ALL, Thick / 2.0f);
+		return;
+	}
 	const float Rounding = m_Params.m_ScrollHorizontal ? Slider.h / 2.0f : Slider.w / 2.0f;
 	Slider.Draw(m_Params.SliderColor(Ui()->CheckActiveItem(pId), Ui()->HotItem() == pId), IGraphics::CORNER_ALL, Rounding);
 }

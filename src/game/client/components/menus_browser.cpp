@@ -835,6 +835,9 @@ void CMenus::RenderServerbrowserFilters(CUIRect View)
 
 void CMenus::ResetServerbrowserFilters()
 {
+	g_Config.m_FogBrDifficulty = 0;
+	g_Config.m_FogBrCategory = 0;
+	g_Config.m_FogBrTeam = 0;
 	g_Config.m_BrFilterString[0] = '\0';
 	g_Config.m_BrExcludeString[0] = '\0';
 	g_Config.m_BrFilterFull = 0;

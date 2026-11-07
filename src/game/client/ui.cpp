@@ -16,6 +16,7 @@
 #include <engine/keys.h>
 #include <engine/shared/config.h>
 
+#include <game/client/components/fog/glass.h>
 #include <game/localization.h>
 
 constexpr float TOOLTIP_FONTSIZE = 14.0f;
@@ -812,6 +813,27 @@ vec2 CUi::CalcAlignedCursorPos(const CUIRect *pRect, vec2 TextSize, int Align, c
 
 CLabelResult CUi::DoLabel(const CUIRect *pRect, const char *pText, float Size, int Align, const SLabelProperties &LabelProps) const
 {
+	// Fog menus: headings and large labels are set in the brand face, without the game outline
+	const bool FogHeading = CUIRect::ms_pfnDrawHook != nullptr && Size >= 17.0f && TextRender()->FontPreset() == EFontPreset::DEFAULT_FONT;
+	ColorRGBA OldOutline;
+	if(FogHeading)
+	{
+		TextRender()->SetDisplayFont("Manrope", Size >= 19.5f ? 800 : 700);
+		TextRender()->SetFontPreset(EFontPreset::DISPLAY_FONT);
+		OldOutline = TextRender()->GetTextOutlineColor();
+		TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.0f);
+	}
+	const CLabelResult Result = DoLabelImpl(pRect, pText, Size, Align, LabelProps);
+	if(FogHeading)
+	{
+		TextRender()->TextOutlineColor(OldOutline);
+		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	}
+	return Result;
+}
+
+CLabelResult CUi::DoLabelImpl(const CUIRect *pRect, const char *pText, float Size, int Align, const SLabelProperties &LabelProps) const
+{
 	const int Flags = GetFlagsForLabelProperties(LabelProps, nullptr);
 	const SCursorAndBoundingBox TextBounds = CalcFontSizeCursorHeightAndBoundingBox(TextRender(), pText, Flags, Size, pRect->w, LabelProps);
 	const vec2 CursorPos = CalcAlignedCursorPos(pRect, TextBounds.m_TextSize, Align, TextBounds.m_LineCount == 1 ? &TextBounds.m_BiggestCharacterHeight : nullptr);
@@ -1435,8 +1457,21 @@ float CUi::DoScrollbarV(const void *pId, const CUIRect *pRect, float Current)
 	}
 
 	// render
-	Rail.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f), IGraphics::CORNER_ALL, Rail.w / 2.0f);
-	Handle.Draw(ms_ScrollBarColorFunction.GetColor(CheckActiveItem(pId), HotItem() == pId), IGraphics::CORNER_ALL, Handle.w / 2.0f);
+	if(CUIRect::ms_pfnDrawHook != nullptr)
+	{
+		// Fog: a faint hairline with a slim frosted thumb that widens under the cursor
+		const bool Active = CheckActiveItem(pId), Hot = HotItem() == pId;
+		const float Cx = Rail.x + Rail.w / 2.0f;
+		const float W = Active || Hot ? 5.0f : 3.0f;
+		Graphics()->TextureClear();
+		Graphics()->DrawRect(Cx - 1.0f, Rail.y, 2.0f, Rail.h, ColorRGBA(1.0f, 1.0f, 1.0f, 0.05f), IGraphics::CORNER_ALL, 1.0f);
+		Graphics()->DrawRect(Cx - W / 2.0f, Handle.y, W, Handle.h, ColorRGBA(0.90f, 0.93f, 0.96f, Active ? 0.75f : (Hot ? 0.55f : 0.30f)), IGraphics::CORNER_ALL, W / 2.0f);
+	}
+	else
+	{
+		Rail.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f), IGraphics::CORNER_ALL, Rail.w / 2.0f);
+		Handle.Draw(ms_ScrollBarColorFunction.GetColor(CheckActiveItem(pId), HotItem() == pId), IGraphics::CORNER_ALL, Handle.w / 2.0f);
+	}
 
 	return ReturnValue;
 }
@@ -1452,8 +1487,10 @@ float CUi::DoScrollbarH(const void *pId, const CUIRect *pRect, float Current, co
 	else
 		pRect->HMargin(5.0f, &Rail);
 
+	// Fog menus draw a hairline track with a round knob instead of the stock bar
+	const bool Fog = CUIRect::ms_pfnDrawHook != nullptr && !pColorInner;
 	CUIRect Handle;
-	Rail.VSplitLeft(pColorInner ? 8.0f : std::clamp(33.0f, Rail.h, Rail.w / 3.0f), &Handle, nullptr);
+	Rail.VSplitLeft(pColorInner ? 8.0f : (Fog ? std::min(16.0f, Rail.w / 3.0f) : std::clamp(33.0f, Rail.h, Rail.w / 3.0f)), &Handle, nullptr);
 	Handle.x += (Rail.w - Handle.w) * Current;
 
 	CUIRect HandleArea = Handle;
@@ -1504,7 +1541,7 @@ float CUi::DoScrollbarH(const void *pId, const CUIRect *pRect, float Current, co
 		}
 	}
 
-	if(!pColorInner && (InsideHandle || Grabbed) && (CheckActiveItem(pId) || HotItem() == pId))
+	if(!pColorInner && !Fog && (InsideHandle || Grabbed) && (CheckActiveItem(pId) || HotItem() == pId))
 	{
 		Handle.h += 3.0f;
 		Handle.y -= 1.5f;
@@ -1543,6 +1580,26 @@ float CUi::DoScrollbarH(const void *pId, const CUIRect *pRect, float Current, co
 		Slider.Draw(ColorRGBA(0.15f, 0.15f, 0.15f, 1.0f).Multiply(HandleColor), IGraphics::CORNER_ALL, 5.0f);
 		Slider.Margin(2.0f, &Slider);
 		Slider.Draw(pColorInner->Multiply(HandleColor), IGraphics::CORNER_ALL, 3.0f);
+	}
+	else if(Fog)
+	{
+		const bool Active = CheckActiveItem(pId), Hot = HotItem() == pId;
+		const float Cy = Rail.y + Rail.h / 2.0f;
+		const float Kx = Handle.x + Handle.w / 2.0f;
+		Graphics()->TextureClear();
+		Graphics()->DrawRect(Rail.x, Cy - 2.0f, Rail.w, 4.0f, ColorRGBA(1.0f, 1.0f, 1.0f, Hot || Active ? 0.13f : 0.09f), IGraphics::CORNER_ALL, 2.0f);
+		Graphics()->DrawRect4(Rail.x, Cy - 2.0f, std::max(Kx - Rail.x, 4.0f), 4.0f, ColorRGBA(0.56f, 0.64f, 0.72f, 0.55f), ColorRGBA(0.84f, 0.88f, 0.93f, 0.85f), ColorRGBA(0.56f, 0.64f, 0.72f, 0.55f), ColorRGBA(0.84f, 0.88f, 0.93f, 0.85f), IGraphics::CORNER_ALL, 2.0f);
+		if(Hot || Active)
+		{
+			const float Halo = Active ? 22.0f : 18.0f;
+			Graphics()->DrawRect(Kx - Halo / 2.0f, Cy - Halo / 2.0f, Halo, Halo, ColorRGBA(0.85f, 0.90f, 0.95f, Active ? 0.14f : 0.08f), IGraphics::CORNER_ALL, Halo / 2.0f);
+		}
+		// the knob swells under the cursor and pops a little when grabbed
+		vec2 &Knob = m_FogKnobAnim.try_emplace(pId, vec2(10.0f, 0.0f)).first->second;
+		FogSpring(Knob.x, Knob.y, Active ? 14.0f : (Hot ? 12.0f : 10.0f), Client()->RenderFrameTime(), 6.0f, 0.55f);
+		const float D = std::max(Knob.x, 4.0f);
+		Graphics()->DrawRect(Kx - D / 2.0f, Cy - D / 2.0f + 1.0f, D, D, ColorRGBA(0.0f, 0.02f, 0.05f, 0.35f), IGraphics::CORNER_ALL, D / 2.0f);
+		Graphics()->DrawRect(Kx - D / 2.0f, Cy - D / 2.0f, D, D, ColorRGBA(0.95f, 0.96f, 0.98f, 1.0f), IGraphics::CORNER_ALL, D / 2.0f);
 	}
 	else
 	{

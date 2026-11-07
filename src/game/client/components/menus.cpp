@@ -3,6 +3,10 @@
 
 #include "menus.h"
 
+#include "fog/brand.h"
+#include "fog/cursor.h"
+#include "fog/glass.h"
+
 #include <base/color.h>
 #include <base/dbg.h>
 #include <base/fs.h>
@@ -282,6 +286,47 @@ int CMenus::DoButton_Favorite(const void *pButtonId, const void *pParentId, bool
 
 int CMenus::DoButton_CheckBox_Common(const void *pId, const char *pText, const char *pBoxText, const CUIRect *pRect, const unsigned Flags)
 {
+	// Fog: on/off options become a glass switch whose knob glides over
+	if(FogMenusActive() && (pBoxText[0] == '\0' || (pBoxText[0] == 'X' && pBoxText[1] == '\0')))
+	{
+		const bool On = pBoxText[0] == 'X';
+		const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
+		const float Speed = g_Config.m_FogAnim ? g_Config.m_FogAnimSpeed / 100.0f : 1000.0f;
+		vec2 &State = m_FogToggleAnim.try_emplace(pId, vec2(On ? 1.0f : 0.0f, 0.0f)).first->second;
+		FogSpring(State.x, State.y, On ? 1.0f : 0.0f, Dt, 4.0f, 0.5f);
+		const float Knob = std::clamp(State.x, 0.0f, 1.0f);
+		// the knob stretches along its travel while it moves (squash and stretch)
+		const float Stretch = std::min(std::abs(State.y) * 0.035f, 0.45f);
+		(void)Speed;
+		const float Hot = Ui()->HotItem() == pId ? 1.0f : 0.0f;
+		const auto Lerp = [](ColorRGBA A, ColorRGBA B, float T) {
+			return ColorRGBA(A.r + (B.r - A.r) * T, A.g + (B.g - A.g) * T, A.b + (B.b - A.b) * T, A.a + (B.a - A.a) * T);
+		};
+
+		const float H = std::clamp(pRect->h - 6.0f, 8.0f, 14.0f);
+		const float W = H * 1.85f;
+		const float X = pRect->x + 1.0f, Y = pRect->y + (pRect->h - H) / 2.0f;
+		const ColorRGBA OffTrack(1.0f, 1.0f, 1.0f, 0.09f + 0.05f * Hot);
+		const ColorRGBA OnTrack(0.62f, 0.72f, 0.80f, 0.80f + 0.12f * Hot);
+		Graphics()->TextureClear();
+		Graphics()->DrawRect(X, Y, W, H, Lerp(OffTrack, OnTrack, Knob), IGraphics::CORNER_ALL, H / 2.0f);
+		Graphics()->DrawRect(X + H * 0.3f, Y + 0.5f, W - H * 0.6f, 1.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.10f + 0.12f * Knob), IGraphics::CORNER_NONE, 0.0f);
+		const float D = H - 4.0f;
+		const float KnobW = D * (1.0f + Stretch), KnobH = D * (1.0f - Stretch * 0.25f);
+		const float KnobX = std::clamp(X + 2.0f + State.x * (W - 4.0f - D) - (KnobW - D) / 2.0f, X + 2.0f, X + W - 2.0f - KnobW);
+		const float KnobY = Y + 2.0f + (D - KnobH) / 2.0f;
+		Graphics()->DrawRect(KnobX, KnobY + 1.0f, KnobW, KnobH, ColorRGBA(0.0f, 0.02f, 0.05f, 0.30f), IGraphics::CORNER_ALL, KnobH / 2.0f);
+		Graphics()->DrawRect(KnobX, KnobY, KnobW, KnobH, Lerp(ColorRGBA(0.70f, 0.74f, 0.79f, 0.95f), ColorRGBA(0.97f, 0.98f, 0.99f, 1.0f), std::max(Knob, Hot * 0.5f)), IGraphics::CORNER_ALL, KnobH / 2.0f);
+
+		CUIRect Label;
+		pRect->VSplitLeft(W + 10.0f, nullptr, &Label);
+		TextRender()->SetRenderFlags(0);
+		TextRender()->TextColor(Lerp(ColorRGBA(0.76f, 0.79f, 0.84f, 1.0f), ColorRGBA(0.93f, 0.95f, 0.97f, 1.0f), std::max(Knob, Hot)));
+		Ui()->DoLabel(&Label, pText, (pRect->h - 4.0f) * CUi::ms_FontmodHeight, TEXTALIGN_ML);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		return Ui()->DoButtonLogic(pId, 0, pRect, Flags);
+	}
+
 	CUIRect Box, Label;
 	pRect->VSplitLeft(pRect->h, &Box, &Label);
 	Label.VSplitLeft(5.0f, nullptr, &Label);
@@ -712,7 +757,12 @@ void CMenus::RenderLoadingDirect(const char *pCaption, const char *pContent, std
 		// the menu background is not loaded yet.
 		return;
 	}
-	if(!GameClient()->m_MenuBackground.Render())
+	if(g_Config.m_FogUi && g_Config.m_FogUiMenus)
+	{
+		Ui()->MapScreen();
+		FogBrand::DrawBackground(Graphics(), *Ui()->Screen(), Client()->GlobalTime());
+	}
+	else if(!GameClient()->m_MenuBackground.Render())
 	{
 		RenderBackground();
 	}
@@ -1024,7 +1074,13 @@ void CMenus::Render()
 	}
 	else
 	{
-		if(!GameClient()->m_MenuBackground.Render())
+		if(g_Config.m_FogUi && g_Config.m_FogUiMenus)
+		{
+			// Fog brand background instead of the map themes
+			Ui()->MapScreen();
+			FogBrand::DrawBackground(Graphics(), *Ui()->Screen(), Client()->GlobalTime());
+		}
+		else if(!GameClient()->m_MenuBackground.Render())
 		{
 			RenderBackground();
 		}
@@ -1033,6 +1089,13 @@ void CMenus::Render()
 		ms_ColorTabbarHover = ms_ColorTabbarHoverOutgame;
 	}
 
+	// the drop card takes Enter and Esc before the page under it can
+	m_FogDropEnter = m_FogDropEscape = false;
+	if(FogDropActive())
+	{
+		m_FogDropEnter = Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER);
+		m_FogDropEscape = Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE);
+	}
 	CUIRect Screen = *Ui()->Screen();
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK || m_Popup != POPUP_NONE)
 	{
@@ -1059,9 +1122,17 @@ void CMenus::Render()
 		{
 			RenderPopupFullscreen(Screen);
 		}
+		else if(m_FogStudioOpen && g_Config.m_FogUi && g_Config.m_FogUiMenus)
+		{
+			RenderFogStudio(Screen);
+		}
 		else if(m_ShowStart)
 		{
 			m_MenusStart.RenderStartMenu(Screen);
+		}
+		else if(g_Config.m_FogUi && g_Config.m_FogUiMenus)
+		{
+			RenderFogPage(Screen);
 		}
 		else
 		{
@@ -1097,6 +1168,14 @@ void CMenus::Render()
 		if(m_Popup != POPUP_NONE)
 		{
 			RenderPopupFullscreen(Screen);
+		}
+		else if(m_FogStudioOpen && g_Config.m_FogUi && g_Config.m_FogUiMenus)
+		{
+			RenderFogStudio(Screen);
+		}
+		else if(g_Config.m_FogUi && g_Config.m_FogUiMenus)
+		{
+			RenderFogIngame(Screen);
 		}
 		else
 		{
@@ -1158,6 +1237,7 @@ void CMenus::Render()
 	}
 
 	Ui()->RenderPopupMenus();
+	RenderFogDrop();
 
 	// Prevent UI elements from being hovered while a key reader is active
 	if(GameClient()->m_KeyBinder.IsActive())
@@ -2404,6 +2484,9 @@ void CMenus::OnRender()
 
 	Ui()->StartCheck();
 	UpdateColors();
+	// experimental Fog glass for every menu rect, only while the menu draws
+	FogGlassInit(Graphics());
+	CUIRect::ms_pfnDrawHook = g_Config.m_FogUi && g_Config.m_FogUiMenus ? FogMenuRectHook : nullptr;
 
 	Ui()->Update();
 
@@ -2415,7 +2498,8 @@ void CMenus::OnRender()
 	if(IsActive())
 	{
 		Ui()->RenderBackButton();
-		RenderTools()->RenderCursor(Ui()->MousePos(), 24.0f);
+		if(!FogDrawMenuCursor(GameClient(), Graphics(), Ui()->MousePos(), 24.0f))
+			RenderTools()->RenderCursor(Ui()->MousePos(), 24.0f);
 	}
 
 	// render debug information
@@ -2427,6 +2511,7 @@ void CMenus::OnRender()
 
 	Ui()->FinishCheck();
 	Ui()->ClearHotkeys();
+	CUIRect::ms_pfnDrawHook = nullptr;
 }
 
 void CMenus::UpdateColors()

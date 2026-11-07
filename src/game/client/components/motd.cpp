@@ -66,6 +66,12 @@ void CMotd::OnRender()
 		return;
 	}
 
+	if(g_Config.m_FogHud)
+	{
+		FogRender();
+		return;
+	}
+
 	const int MaxLines = 24;
 	const float FontSize = 32.0f; // also the size of the margin and rect rounding
 	const float ScreenHeight = 40.0f * FontSize; // multiple of the font size to get perfect alignment

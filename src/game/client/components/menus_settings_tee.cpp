@@ -31,6 +31,16 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	TabBar.VSplitMid(&PlayerTab, &DummyTab);
 	MainView.HSplitTop(10.0f, nullptr, &MainView);
 
+	// Fog: the tee studio has the big preview, animated colours, patterns and the dummy sync
+	if(g_Config.m_FogUi)
+	{
+		CUIRect StudioButton;
+		ChangeInfo.VSplitRight(150.0f, &ChangeInfo, &StudioButton);
+		static CButtonContainer s_StudioButton;
+		if(DoButton_Menu(&s_StudioButton, Localize("Open tee studio"), 0, &StudioButton))
+			OpenFogStudio();
+	}
+
 	static CButtonContainer s_PlayerTabButton;
 	if(DoButton_MenuTab(&s_PlayerTabButton, Localize("Player"), !m_Dummy, &PlayerTab, IGraphics::CORNER_L, nullptr, nullptr, nullptr, nullptr, 4.0f))
 	{

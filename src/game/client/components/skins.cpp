@@ -439,6 +439,27 @@ void CSkins::LoadSkinFinish(CSkinContainer *pSkinContainer, const CSkinLoadData 
 		Skin.m_ColorableSkin.m_aEyes[i] = Graphics()->LoadSpriteTexture(Data.m_InfoGrayscale, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_EYE_NORMAL + i]);
 	}
 
+	// Fog trails: alpha masks of the outline parts. Outline sprites are filled shapes slightly
+	// larger than the parts, so together they form the tee's silhouette.
+	if(Data.m_Info.PixelSize() == 4)
+	{
+		auto pMasks = std::make_shared<CSkin::SSilhouetteMasks>();
+		const auto Extract = [&](int SpriteId, int &OutW, int &OutH, std::vector<uint8_t> &vOut) {
+			const CDataSprite &Sprite = g_pData->m_aSprites[SpriteId];
+			const size_t CellW = Data.m_Info.m_Width / Sprite.m_pSet->m_Gridx;
+			const size_t CellH = Data.m_Info.m_Height / Sprite.m_pSet->m_Gridy;
+			OutW = (int)(Sprite.m_W * CellW);
+			OutH = (int)(Sprite.m_H * CellH);
+			vOut.resize((size_t)OutW * OutH);
+			for(int y = 0; y < OutH; y++)
+				for(int x = 0; x < OutW; x++)
+					vOut[(size_t)y * OutW + x] = Data.m_Info.m_pData[((Sprite.m_Y * CellH + y) * Data.m_Info.m_Width + (Sprite.m_X * CellW + x)) * 4 + 3];
+		};
+		Extract(SPRITE_TEE_BODY_OUTLINE, pMasks->m_BodyW, pMasks->m_BodyH, pMasks->m_vBody);
+		Extract(SPRITE_TEE_FOOT_OUTLINE, pMasks->m_FootW, pMasks->m_FootH, pMasks->m_vFoot);
+		Skin.m_pSilhouette = std::move(pMasks);
+	}
+
 	Skin.m_Metrics = Data.m_Metrics;
 	Skin.m_BloodColor = Data.m_BloodColor;
 

@@ -27,8 +27,19 @@
 #include <game/voting.h>
 
 #include <chrono>
+#include <functional>
 #include <optional>
+#include <unordered_map>
 #include <vector>
+
+// a saved clip on the Fog clips page
+struct SFogClip
+{
+	std::string m_File;
+	std::string m_Map;
+	time_t m_Time = 0;
+	int64_t m_Size = 0;
+};
 
 class CMenus : public CComponent
 {
@@ -581,6 +592,78 @@ protected:
 
 	// found in menus_settings_ddnet.cpp
 	void RenderSettingsDDNet(CUIRect MainView);
+	void RenderSettingsFog(CUIRect MainView);
+	void RenderSettingsFogMusic(CUIRect MainView);
+	void RenderSettingsShaders(CUIRect MainView); // fog/settings_shaders.cpp: the Visuals tab
+	void RenderSettingsFogVisuals(CUIRect MainView, int Section);
+	int m_FogVisualsTab = 0;
+	float m_FogVisualsTabX = -1.0f, m_FogVisualsTabV = 0.0f;
+
+	// Fog client page frame (fog/menus_rail.cpp)
+	void RenderFogPage(CUIRect Screen);
+	void RenderFogRail(CUIRect Rail);
+	float m_FogRailActiveY = -1.0f;
+	float m_FogRailHoverY = -1.0f;
+	float m_FogRailHoverAlpha = 0.0f;
+	float m_FogRailActiveV = 0.0f;
+	float m_FogRailHoverV = 0.0f;
+	// clips page (fog/clips.cpp)
+	void RenderFogClips(CUIRect MainView);
+	void RenderFogStudio(CUIRect Screen);
+	void RenderFogDrop();
+	void FogStartNextDrop();
+	bool FogInstallDrop(int Dest);
+	std::vector<std::string> m_vFogDropQueue;
+	std::string m_FogDropPath, m_FogDropName;
+	IGraphics::CTextureHandle m_FogDropTexture;
+	int m_FogDropWidth = 0, m_FogDropHeight = 0, m_FogDropGuess = 0;
+	float m_FogDropOpenTime = 0.0f, m_FogDropStatusTime = -100.0f;
+	char m_aFogDropStatus[192] = "";
+	bool m_FogDropOpenedMenu = false;
+	bool m_FogDropEnter = false, m_FogDropEscape = false;
+	bool m_FogStudioOpen = false;
+	float m_FogStudioOpenTime = 0.0f;
+	int m_FogStudioTab = 0;
+	int m_FogStudioAccessory = -1; // selected worn accessory in the studio
+	float m_FogStudioEmoteUntil = 0.0f;
+	int m_FogStudioEmote = 0;
+	std::vector<struct SFogClip> m_vFogClips;
+	float m_FogClipsRefresh = -100.0f;
+	int m_FogClipDeleteArmed = -1;
+	char m_aFogClipStatus[256] = "";
+
+	// in-game Esc menu (fog/ingame.cpp)
+	void RenderFogIngame(CUIRect Screen);
+	void RenderFogIngameRail(CUIRect Rail);
+	void RenderFogIngameHome(CUIRect Content);
+	void FogIngameDisconnect();
+	float m_FogIngameLastRender = -10.0f, m_FogIngameOpenTime = 0.0f;
+	float m_FogIngameRailY = -1.0f, m_FogIngameRailV = 0.0f, m_FogIngameHoverY = -1.0f, m_FogIngameHoverV = 0.0f, m_FogIngameHoverAlpha = 0.0f;
+	float m_aFogTileLift[6] = {}, m_aFogTileLiftV[6] = {};
+
+	// server browser (fog/browser.cpp): community and map-type chips, server cards, detail panel
+	void RenderFogServerbrowser(CUIRect MainView);
+	void RenderFogServerCard(CUIRect Rect, const CServerInfo *pItem, bool Selected, bool Hot, float In);
+	void RenderFogServerPanel(CUIRect Panel);
+	bool RenderFogFilterChips(CUIRect *pView, IFilterList &Filter, int Num, const std::function<const char *(int)> &GetId, const std::function<const char *(int)> &GetLabel, const std::function<int(int)> &GetPlayers, const std::function<void(int, CUIRect)> &RenderIcon, const char *pAllLabel, std::vector<unsigned char> &vIds, bool Measure);
+	int m_FogBrowserLastPage = -1;
+	float m_FogBrowserInTime = 0.0f;
+	float m_FogSortX = -1.0f, m_FogSortW = 0.0f, m_FogSortXV = 0.0f, m_FogSortWV = 0.0f;
+	float m_FogPanelTabX = -1.0f, m_FogPanelTabV = 0.0f;
+	float m_FogConnectLift = 0.0f, m_FogConnectLiftV = 0.0f;
+	int m_FogPanelLastServer = -1;
+	float m_FogPanelInTime = 0.0f;
+
+	// settings: grouped section list + page header; shrinks MainView, returns the restart bar
+	void RenderFogSettingsNav(CUIRect &MainView, CUIRect &RestartBar, bool NeedRestart);
+	float m_FogSettingsActiveY = -1.0f;
+	float m_FogSettingsHoverY = -1.0f;
+	float m_FogSettingsHoverAlpha = 0.0f;
+	float m_FogSettingsActiveV = 0.0f;
+	float m_FogSettingsHoverV = 0.0f;
+	float m_FogSettingsHeaderIn = 1.0f;
+	int m_FogSettingsLastPage = -1;
+	std::unordered_map<const void *, vec2> m_FogToggleAnim; // knob position, velocity
 
 	// found in menus_settings_general.cpp
 	void RenderSettingsGeneral(CUIRect MainView);
@@ -669,6 +752,12 @@ public:
 	bool IsInit() const { return m_IsInit; }
 
 	bool IsActive() const { return m_MenuActive; }
+	// Fog tee studio: a full-screen editor over any menu (start screen, settings, Esc menu)
+	void OpenFogStudio();
+	// Fog: a file dropped onto the window (PNG -> where should it go?)
+	void FogHandleDrop(const char *pPath);
+	bool FogDropActive() const { return !m_FogDropPath.empty() || !m_vFogDropQueue.empty(); }
+	bool FogStudioOpen() const { return m_FogStudioOpen; }
 	void SetActive(bool Active);
 
 	void OnInterfacesInit(CGameClient *pClient) override;
@@ -700,6 +789,7 @@ public:
 		PAGE_SETTINGS,
 		PAGE_NETWORK,
 		PAGE_GHOST,
+		PAGE_FOG_CLIPS, // Fog: saved clips
 
 		PAGE_LENGTH,
 	};
@@ -715,6 +805,8 @@ public:
 		SETTINGS_GRAPHICS,
 		SETTINGS_SOUND,
 		SETTINGS_DDNET,
+		SETTINGS_FOG,
+		SETTINGS_SHADERS,
 		SETTINGS_ASSETS,
 		SETTINGS_CREDITS,
 

@@ -1,6 +1,9 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include "maplayers.h"
+#include "fog/brand.h"
+
+#include <game/client/ui.h>
 
 #include <engine/map.h>
 
@@ -51,6 +54,17 @@ void CMapLayers::OnRender()
 {
 	if(m_OnlineOnly && Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
+
+	// Fog: the live background can stand in for the map background in game
+	if(m_Type == RENDERTYPE_BACKGROUND && m_OnlineOnly && g_Config.m_FogBgIngame)
+	{
+		Ui()->MapScreen();
+		FogBrand::DrawBackground(Graphics(), *Ui()->Screen(), Client()->GlobalTime());
+		// components after this one (tees, items) draw in the world mapping the map layers leave behind
+		const vec2 Center = GetCurCamera()->m_Center;
+		Graphics()->MapScreen(Graphics()->MapScreenToWorld(Center.x, Center.y, 100.0f, 100.0f, 100.0f, 0.0f, 0.0f, Graphics()->ScreenAspect(), GetCurCamera()->m_Zoom));
+		return;
+	}
 
 	m_EnvEvaluator.Update();
 

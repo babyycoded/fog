@@ -73,6 +73,7 @@ public:
 	{
 		m_OriginalRenderSkin.Reset();
 		m_ColorableRenderSkin.Reset();
+		m_pSilhouette = nullptr;
 		m_SkinMetrics.Reset();
 		m_CustomColoredSkin = false;
 		m_BloodColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
@@ -81,6 +82,7 @@ public:
 		m_Size = 1.0f;
 		m_GotAirJump = true;
 		m_TeeRenderFlags = 0;
+		m_FogAccessorySlot = -1;
 		m_FeetFlipped = false;
 
 		for(auto &Sixup : m_aSixup)
@@ -91,6 +93,7 @@ public:
 	{
 		m_OriginalRenderSkin = pSkin->m_OriginalSkin;
 		m_ColorableRenderSkin = pSkin->m_ColorableSkin;
+		m_pSilhouette = pSkin->m_pSilhouette;
 		m_BloodColor = pSkin->m_BloodColor;
 		m_SkinMetrics = pSkin->m_Metrics;
 	}
@@ -99,6 +102,7 @@ public:
 	{
 		m_OriginalRenderSkin = TeeRenderInfo.m_OriginalRenderSkin;
 		m_ColorableRenderSkin = TeeRenderInfo.m_ColorableRenderSkin;
+		m_pSilhouette = TeeRenderInfo.m_pSilhouette;
 		m_BloodColor = TeeRenderInfo.m_BloodColor;
 		m_SkinMetrics = TeeRenderInfo.m_SkinMetrics;
 	}
@@ -120,6 +124,7 @@ public:
 
 	CSkin::CSkinTextures m_OriginalRenderSkin;
 	CSkin::CSkinTextures m_ColorableRenderSkin;
+	std::shared_ptr<const CSkin::SSilhouetteMasks> m_pSilhouette; // Fog trails
 
 	CSkin::CSkinMetrics m_SkinMetrics;
 
@@ -132,6 +137,7 @@ public:
 	bool m_GotAirJump;
 	int m_TeeRenderFlags;
 	bool m_FeetFlipped;
+	int m_FogAccessorySlot = -1; // Fog: which accessory set to draw on this tee (-1 none)
 
 	bool Valid() const
 	{
@@ -221,6 +227,11 @@ class CRenderTools
 	void RenderTee7(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, int Emote, vec2 Dir, vec2 Pos, float Alpha = 1.0f) const;
 
 public:
+	// Fog accessories: called behind (Layer 0) and in front of (Layer 1) a tee that has m_FogAccessorySlot set
+	typedef void (*FFogAccessoryHook)(void *pUser, int Slot, int Layer, const class CAnimState *pAnim, vec2 Pos, vec2 BodyPos, float BaseSize, float BodyAngle, vec2 Dir, float Alpha);
+	static FFogAccessoryHook ms_pfnFogAccessoryHook;
+	static void *ms_pFogAccessoryUser;
+
 	class IGraphics *Graphics() const { return m_pGraphics; }
 	class ITextRender *TextRender() const { return m_pTextRender; }
 

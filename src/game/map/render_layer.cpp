@@ -1,4 +1,5 @@
 #include "render_layer.h"
+#include "fog_tint.h"
 
 #include <base/dbg.h>
 #include <base/log.h>
@@ -299,7 +300,7 @@ CRenderLayerTile::CRenderLayerTile(int GroupId, int LayerId, int Flags, CMapItem
 	CRenderLayer(GroupId, LayerId, Flags)
 {
 	m_pLayerTilemap = pLayerTilemap;
-	m_Color = ColorRGBA(m_pLayerTilemap->m_Color.r / 255.0f, m_pLayerTilemap->m_Color.g / 255.0f, m_pLayerTilemap->m_Color.b / 255.0f, pLayerTilemap->m_Color.a / 255.0f);
+	m_Color = FogMapTint::Apply(ColorRGBA(m_pLayerTilemap->m_Color.r / 255.0f, m_pLayerTilemap->m_Color.g / 255.0f, m_pLayerTilemap->m_Color.b / 255.0f, pLayerTilemap->m_Color.a / 255.0f));
 	m_pTiles = nullptr;
 }
 
@@ -551,7 +552,7 @@ ColorRGBA CRenderLayerTile::GetRenderColor(const CRenderLayerParams &Params) con
 
 	ColorRGBA ColorEnv = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 	m_pEnvelopeManager->EnvelopeEval()->EnvelopeEval(m_pLayerTilemap->m_ColorEnvOffset, m_pLayerTilemap->m_ColorEnv, ColorEnv, 4);
-	Color = Color.Multiply(ColorEnv);
+	Color = Color.Multiply(FogMapTint::ApplyMultiplier(ColorEnv));
 	return Color;
 }
 
@@ -1038,6 +1039,7 @@ void CRenderLayerQuads::RenderQuadLayer(float Alpha, const CRenderLayerParams &P
 				if(pQuad->m_ColorEnv >= 0)
 				{
 					m_pEnvelopeManager->EnvelopeEval()->EnvelopeEval(pQuad->m_ColorEnvOffset, pQuad->m_ColorEnv, Color, 4);
+					Color = FogMapTint::ApplyMultiplier(Color);
 				}
 				Color.a *= Alpha;
 
@@ -1067,6 +1069,7 @@ void CRenderLayerQuads::RenderQuadLayer(float Alpha, const CRenderLayerParams &P
 			if(QuadCluster.m_ColorEnv >= 0)
 			{
 				m_pEnvelopeManager->EnvelopeEval()->EnvelopeEval(QuadCluster.m_ColorEnvOffset, QuadCluster.m_ColorEnv, Color, 4);
+				Color = FogMapTint::ApplyMultiplier(Color);
 			}
 
 			Color.a *= Alpha;
@@ -1179,6 +1182,7 @@ void CRenderLayerQuads::Init()
 				vTmpQuads[QuadId].m_aVertices[j].m_G = (unsigned char)pQuad->m_aColors[QuadIdX].g;
 				vTmpQuads[QuadId].m_aVertices[j].m_B = (unsigned char)pQuad->m_aColors[QuadIdX].b;
 				vTmpQuads[QuadId].m_aVertices[j].m_A = (unsigned char)pQuad->m_aColors[QuadIdX].a;
+				FogMapTint::ApplyBytes(vTmpQuads[QuadId].m_aVertices[j].m_R, vTmpQuads[QuadId].m_aVertices[j].m_G, vTmpQuads[QuadId].m_aVertices[j].m_B);
 			}
 			else
 			{
@@ -1193,6 +1197,7 @@ void CRenderLayerQuads::Init()
 				vTmpQuadsTextured[QuadId].m_aVertices[j].m_G = (unsigned char)pQuad->m_aColors[QuadIdX].g;
 				vTmpQuadsTextured[QuadId].m_aVertices[j].m_B = (unsigned char)pQuad->m_aColors[QuadIdX].b;
 				vTmpQuadsTextured[QuadId].m_aVertices[j].m_A = (unsigned char)pQuad->m_aColors[QuadIdX].a;
+				FogMapTint::ApplyBytes(vTmpQuadsTextured[QuadId].m_aVertices[j].m_R, vTmpQuadsTextured[QuadId].m_aVertices[j].m_G, vTmpQuadsTextured[QuadId].m_aVertices[j].m_B);
 			}
 		}
 	};

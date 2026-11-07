@@ -3,11 +3,14 @@
 
 #include "sounds.h"
 
+#include <base/fs.h>
+
 #include <base/mem.h>
 #include <base/time.h>
 
 #include <engine/engine.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 #include <engine/sound.h>
 
 #include <generated/client_data.h>
@@ -36,7 +39,16 @@ void CSoundLoading::Run()
 			if(State() == IJob::STATE_ABORTED)
 				return;
 
-			int Id = m_pGameClient->Sound()->LoadWV(g_pData->m_aSounds[s].m_aSounds[i].m_pFilename);
+			// Fog sound packs: the same file name inside fog/sounds/<pack> replaces the game sound
+			const char *pFilename = g_pData->m_aSounds[s].m_aSounds[i].m_pFilename;
+			char aPackPath[IO_MAX_PATH_LENGTH];
+			if(g_Config.m_FogSoundPack[0])
+			{
+				str_format(aPackPath, sizeof(aPackPath), "fog/sounds/%s/%s", g_Config.m_FogSoundPack, fs_filename(pFilename));
+				if(m_pGameClient->Storage()->FileExists(aPackPath, IStorage::TYPE_ALL))
+					pFilename = aPackPath;
+			}
+			int Id = m_pGameClient->Sound()->LoadWV(pFilename);
 			g_pData->m_aSounds[s].m_aSounds[i].m_Id = Id;
 			// try to render a frame
 			if(m_Render)
@@ -120,6 +132,21 @@ void CSounds::OnInit()
 		CSoundLoading(GameClient(), true).Run();
 		m_WaitForSoundJob = false;
 	}
+}
+
+void CSounds::FogReloadPack()
+{
+	if(m_WaitForSoundJob)
+		return;
+	Sound()->StopAll();
+	for(int s = 0; s < g_pData->m_NumSounds; s++)
+		for(int i = 0; i < g_pData->m_aSounds[s].m_NumSounds; i++)
+		{
+			if(g_pData->m_aSounds[s].m_aSounds[i].m_Id >= 0)
+				Sound()->UnloadSample(g_pData->m_aSounds[s].m_aSounds[i].m_Id);
+			g_pData->m_aSounds[s].m_aSounds[i].m_Id = -1;
+		}
+	CSoundLoading(GameClient(), false).Run();
 }
 
 void CSounds::OnReset()

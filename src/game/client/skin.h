@@ -1,6 +1,9 @@
 #ifndef GAME_CLIENT_SKIN_H
 #define GAME_CLIENT_SKIN_H
 
+#include <cstdint>
+#include <vector>
+#include <memory>
 #include <base/color.h>
 
 #include <engine/graphics.h>
@@ -32,6 +35,16 @@ public:
 
 	CSkinTextures m_OriginalSkin;
 	CSkinTextures m_ColorableSkin;
+	// Fog client: CPU alpha masks of the outline parts (filled shapes, slightly larger than the
+	// parts), used to composite flat afterimage silhouettes without overlapping alpha.
+	struct SSilhouetteMasks
+	{
+		int m_BodyW = 0, m_BodyH = 0;
+		std::vector<uint8_t> m_vBody;
+		int m_FootW = 0, m_FootH = 0;
+		std::vector<uint8_t> m_vFoot;
+	};
+	std::shared_ptr<const SSilhouetteMasks> m_pSilhouette;
 	ColorRGBA m_BloodColor;
 
 	class CSkinMetricVariableInt

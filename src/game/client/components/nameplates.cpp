@@ -1,4 +1,5 @@
 #include "nameplates.h"
+#include "fog/brand.h"
 
 #include <engine/font_icons.h>
 #include <engine/graphics.h>
@@ -48,6 +49,12 @@ public:
 	bool m_ShowHookStrongWeakId;
 	int m_HookStrongWeakId;
 	float m_FontSizeHookStrongWeak;
+	bool m_ShowPing = false; // Fog: the player's ping above the clan
+	SFogNameStyle m_FogStyle; // Fog: name style of a Fog player (mode 0 = plain)
+	bool m_FogStyled = false;
+	float m_FogTime = 0.0f;
+	int m_Ping = 0;
+	float m_FontSizePing = 0.0f;
 };
 
 // Part Types
@@ -341,6 +348,32 @@ class CNamePlatePartName : public CNamePlatePartText
 private:
 	char m_aText[std::max((size_t)MAX_NAME_LENGTH, (size_t)protocol7::MAX_NAME_ARRAY_SIZE)] = "";
 	float m_FontSize = -INFINITY;
+	int m_StyleMode = 0;
+	bool m_Badge = false;
+	float m_BadgeWidth = 0.0f;
+
+	// Fog: the colour of one letter of a styled name at time t (u: 0 first letter .. 1 last)
+	static ColorRGBA StyledColor(const SFogNameStyle &Style, float u, float t)
+	{
+		const auto Lerp = [](const ColorRGBA &A, const ColorRGBA &B, float k) {
+			return ColorRGBA(A.r + (B.r - A.r) * k, A.g + (B.g - A.g) * k, A.b + (B.b - A.b) * k, 1.0f);
+		};
+		const float s = t * Style.m_Speed;
+		switch(Style.m_Mode)
+		{
+		case 1: // shimmer: a gradient with a band of light running through it
+		{
+			const ColorRGBA Base = Lerp(Style.m_Color1, Style.m_Color2, u);
+			const float Band = u - std::fmod(s * 0.45f, 1.6f) + 0.3f;
+			return Lerp(Base, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), 0.65f * std::exp(-Band * Band * 28.0f));
+		}
+		case 2: return Lerp(Style.m_Color1, Style.m_Color2, u);
+		case 3: return color_cast<ColorRGBA>(ColorHSLA(std::fmod(u * 0.7f + s * 0.18f, 1.0f), 0.55f, 0.72f)).WithAlpha(1.0f);
+		case 4: return Lerp(Style.m_Color1, Style.m_Color2, 0.5f + 0.5f * std::sin(s * 2.4f));
+		case 5: return Lerp(Style.m_Color1, Style.m_Color2, 0.5f + 0.5f * std::sin(u * 6.0f - s * 3.0f));
+		default: return ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
 
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
@@ -348,8 +381,15 @@ protected:
 		m_Visible = Data.m_ShowName;
 		if(!m_Visible)
 			return false;
-		m_Color = Data.m_Color;
-		return m_FontSize != Data.m_FontSize || str_comp(m_aText, Data.m_aName) != 0;
+		const int Mode = Data.m_FogStyled ? Data.m_FogStyle.m_Mode : 0;
+		const bool Badge = Data.m_FogStyled && Data.m_FogStyle.m_Badge;
+		// styled names carry their colour in the glyphs; keep only the alpha here
+		m_Color = Mode ? ColorRGBA(1.0f, 1.0f, 1.0f, Data.m_Color.a) : Data.m_Color;
+		const bool Animated = Mode == 1 || Mode >= 3;
+		const bool Changed = m_FontSize != Data.m_FontSize || str_comp(m_aText, Data.m_aName) != 0 || m_StyleMode != Mode || m_Badge != Badge;
+		m_StyleMode = Mode;
+		m_Badge = Badge;
+		return Changed || Animated;
 	}
 	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
 	{
@@ -357,12 +397,39 @@ protected:
 		str_copy(m_aText, Data.m_aName);
 		CTextCursor Cursor;
 		Cursor.m_FontSize = m_FontSize;
+		if(m_StyleMode)
+		{
+			size_t Bytes = 0, Len = 0;
+			str_utf8_stats(m_aText, sizeof(m_aText), sizeof(m_aText), &Bytes, &Len);
+			for(size_t i = 0; i < Len; i++)
+				Cursor.m_vColorSplits.push_back({(int)i, 1, StyledColor(Data.m_FogStyle, Len > 1 ? i / (float)(Len - 1) : 0.0f, Data.m_FogTime)});
+		}
 		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, m_aText);
 	}
 
 public:
 	CNamePlatePartName(CGameClient &This) :
 		CNamePlatePartText(This) {}
+	void Update(CGameClient &This, const CNamePlateData &Data) override
+	{
+		CNamePlatePartText::Update(This, Data);
+		// the Fog mark sits before the name of Fog players
+		m_BadgeWidth = m_Visible && m_Badge ? m_FontSize * 1.15f : 0.0f;
+		if(m_TextContainerIndex.Valid())
+			m_Size.x = This.TextRender()->GetBoundingBoxTextContainer(m_TextContainerIndex).m_W + m_BadgeWidth;
+	}
+	void Render(CGameClient &This, vec2 Pos) const override
+	{
+		if(!m_TextContainerIndex.Valid())
+			return;
+		if(m_BadgeWidth > 0.0f)
+		{
+			const float MarkSize = m_FontSize * 1.05f;
+			FogBrand::DrawMark(This.Graphics(), vec2(Pos.x - Size().x / 2.0f + MarkSize * 0.5f, Pos.y), MarkSize, ColorRGBA(0.93f, 0.95f, 0.97f, m_Color.a), 0.4f * m_Color.a);
+		}
+		const ColorRGBA OutlineColor(0.0f, 0.0f, 0.0f, 0.5f * m_Color.a);
+		This.TextRender()->RenderTextContainer(m_TextContainerIndex, m_Color, OutlineColor, Pos.x - Size().x / 2.0f + m_BadgeWidth, Pos.y - (Size().y) / 2.0f);
+	}
 };
 
 class CNamePlatePartClan : public CNamePlatePartText
@@ -391,6 +458,40 @@ protected:
 
 public:
 	CNamePlatePartClan(CGameClient &This) :
+		CNamePlatePartText(This) {}
+};
+
+// Fog: ping in the distance colours of the browser (sea green, sand, dusty rose)
+class CNamePlatePartPing : public CNamePlatePartText
+{
+private:
+	int m_Ping = -1;
+	float m_FontSize = -INFINITY;
+
+protected:
+	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
+	{
+		m_Visible = Data.m_ShowPing;
+		if(!m_Visible)
+			return false;
+		const ColorRGBA Near(0.60f, 0.86f, 0.74f, 1.0f), Mid(0.90f, 0.82f, 0.58f, 1.0f), Far(0.92f, 0.58f, 0.60f, 1.0f);
+		m_Color = Data.m_Ping < 70 ? Near : (Data.m_Ping < 150 ? Mid : Far);
+		m_Color.a = Data.m_Color.a;
+		return m_FontSize != Data.m_FontSizePing || m_Ping != Data.m_Ping;
+	}
+	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
+	{
+		m_FontSize = Data.m_FontSizePing;
+		m_Ping = Data.m_Ping;
+		char aText[16];
+		str_format(aText, sizeof(aText), "%d", m_Ping);
+		CTextCursor Cursor;
+		Cursor.m_FontSize = m_FontSize;
+		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, aText);
+	}
+
+public:
+	CNamePlatePartPing(CGameClient &This) :
 		CNamePlatePartText(This) {}
 };
 
@@ -522,6 +623,9 @@ private:
 		AddPart<CNamePlatePartNewLine>(This);
 
 		AddPart<CNamePlatePartClan>(This);
+		AddPart<CNamePlatePartNewLine>(This);
+
+		AddPart<CNamePlatePartPing>(This);
 		AddPart<CNamePlatePartNewLine>(This);
 
 		AddPart<CNamePlatePartClientId>(This, true);
@@ -657,6 +761,22 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 
 	Data.m_FontSizeHookStrongWeak = 18.0f + 20.0f * g_Config.m_ClNamePlatesStrongSize / 100.0f;
 	Data.m_FontSizeDirection = 18.0f + 20.0f * g_Config.m_ClDirectionSize / 100.0f;
+
+	Data.m_ShowPing = Data.m_ShowName && g_Config.m_FogNamePlatesPing && !pPlayerInfo->m_Local;
+	// Fog players (and you) get their chosen name style
+	if(pPlayerInfo->m_Local)
+	{
+		Data.m_FogStyle = GameClient()->m_FogPresence.OwnStyle();
+		Data.m_FogStyled = true;
+	}
+	else if(const SFogNameStyle *pStyle = GameClient()->m_FogPresence.Find(Data.m_aName))
+	{
+		Data.m_FogStyle = *pStyle;
+		Data.m_FogStyled = true;
+	}
+	Data.m_FogTime = Client()->LocalTime();
+	Data.m_Ping = std::clamp(pPlayerInfo->m_Latency, 0, 999);
+	Data.m_FontSizePing = Data.m_FontSizeHookStrongWeak;
 
 	if(g_Config.m_ClNamePlatesAlways == 0)
 		Alpha *= std::clamp(1.0f - std::pow(distance(GameClient()->m_Controls.m_aTargetPos[g_Config.m_ClDummy], Position) / 200.0f, 16.0f), 0.0f, 1.0f);

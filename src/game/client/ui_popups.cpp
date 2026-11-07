@@ -7,8 +7,11 @@
 #include <base/math.h>
 #include <base/str.h>
 
+#include <engine/client.h>
 #include <engine/graphics.h>
+#include <engine/shared/config.h>
 
+#include <game/client/components/fog/glass.h>
 #include <game/localization.h>
 
 void CUi::DoPopupMenu(const SPopupMenuId *pId, float X, float Y, float Width, float Height, void *pContext, FPopupMenuFunction pfnFunc, const SPopupMenuProperties &Props)
@@ -29,6 +32,7 @@ void CUi::DoPopupMenu(const SPopupMenuId *pId, float X, float Y, float Width, fl
 	pNewMenu->m_Rect.h = Height;
 	pNewMenu->m_pContext = pContext;
 	pNewMenu->m_pfnFunc = pfnFunc;
+	pNewMenu->m_OpenTime = Client()->GlobalTime();
 }
 
 void CUi::RenderPopupMenus()
@@ -72,6 +76,30 @@ void CUi::RenderPopupMenus()
 		}
 
 		CUIRect PopupRect = PopupMenu.m_Rect;
+		// Fog: the popup unfolds downward from its anchor and settles with a small spring
+		const bool Unfold = CUIRect::ms_pfnDrawHook != nullptr && g_Config.m_FogAnim;
+		float Open = 1.0f;
+		if(Unfold)
+		{
+			const float Speed = std::clamp(g_Config.m_FogAnimSpeed / 100.0f, 0.1f, 10.0f);
+			Open = std::clamp((Client()->GlobalTime() - PopupMenu.m_OpenTime) * 5.0f * Speed, 0.0f, 1.0f);
+		}
+		if(Open < 1.0f)
+		{
+			const float Reveal = 1.0f - std::pow(1.0f - Open, 3.0f);
+			PopupRect.y -= (1.0f - FogEaseOutBack(Open)) * 6.0f;
+			CUIRect Clip = PopupRect;
+			Clip.Margin(-12.0f, &Clip);
+			Clip.h = (PopupRect.h + 12.0f) * Reveal + 12.0f;
+			ClipEnable(&Clip);
+		}
+		if(CUIRect::ms_pfnDrawHook != nullptr)
+		{
+			// Fog: popups float above the page on a dense, almost opaque slate so text below never shows through
+			Graphics()->TextureClear();
+			Graphics()->DrawRect(PopupRect.x - 2.0f, PopupRect.y + 2.0f, PopupRect.w + 4.0f, PopupRect.h + 4.0f, ColorRGBA(0.0f, 0.01f, 0.03f, 0.35f), IGraphics::CORNER_ALL, 8.0f);
+			Graphics()->DrawRect(PopupRect.x, PopupRect.y, PopupRect.w, PopupRect.h, ColorRGBA(0.13f, 0.15f, 0.18f, 0.94f), IGraphics::CORNER_ALL, 6.0f);
+		}
 		PopupRect.Draw(PopupMenu.m_Props.m_BorderColor, PopupMenu.m_Props.m_Corners, 3.0f);
 		PopupRect.Margin(SPopupMenu::POPUP_BORDER, &PopupRect);
 		PopupRect.Draw(PopupMenu.m_Props.m_BackgroundColor, PopupMenu.m_Props.m_Corners, 3.0f);
@@ -80,6 +108,8 @@ void CUi::RenderPopupMenus()
 		// The popup render function can open/close popups, which may resize the vector and thus
 		// invalidate the variable PopupMenu. We therefore store pId in a separate variable.
 		EPopupMenuFunctionResult Result = PopupMenu.m_pfnFunc(PopupMenu.m_pContext, PopupRect, Active);
+		if(Open < 1.0f)
+			ClipDisable();
 		if(Result != POPUP_KEEP_OPEN || (Active && ConsumeHotkey(HOTKEY_ESCAPE)))
 			ClosePopupMenu(pId, Result == POPUP_CLOSE_CURRENT_AND_DESCENDANTS);
 	}
@@ -334,6 +364,12 @@ int CUi::DoDropDown(CUIRect *pRect, int CurSelection, const char **pStrs, int Nu
 	Props.m_HintRequiresStringCheck = true;
 	Props.m_HintCanChangePositionOrSize = true;
 	Props.m_ShowDropDownIcon = true;
+	if(CUIRect::ms_pfnDrawHook != nullptr)
+	{
+		// Fog: a dark inset field, so a choice reads as a value and not as a push button
+		Props.m_Color = ColorRGBA(0.0f, 0.0f, 0.0f, HotItem() == &State.m_ButtonContainer ? 0.34f : 0.24f);
+		Props.m_Rounding = 8.0f;
+	}
 	if(IsPopupOpen(&State.m_SelectionPopupContext))
 		Props.m_Corners = IGraphics::CORNER_ALL & (~State.m_SelectionPopupContext.m_Props.m_Corners);
 	if(DoButton_Menu(State.m_UiElement, &State.m_ButtonContainer, LabelFunc, pRect, Props))

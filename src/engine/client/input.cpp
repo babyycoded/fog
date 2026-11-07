@@ -90,7 +90,6 @@ CInput::CInput()
 	m_CompositionCursor = 0;
 	m_CandidateSelectedIndex = -1;
 
-	m_aDropFile[0] = '\0';
 }
 
 void CInput::Init()
@@ -901,7 +900,7 @@ int CInput::Update()
 			return 1;
 
 		case SDL_DROPFILE:
-			str_copy(m_aDropFile, Event.drop.file);
+			m_DropFiles.emplace_back(Event.drop.file);
 			SDL_free(Event.drop.file);
 			break;
 		}
@@ -980,10 +979,10 @@ bool CInput::GetDropFile(char *aBuf, int Len)
 		return true;
 	}
 #endif
-	if(m_aDropFile[0] != '\0')
+	if(!m_DropFiles.empty())
 	{
-		str_copy(aBuf, m_aDropFile, Len);
-		m_aDropFile[0] = '\0';
+		str_copy(aBuf, m_DropFiles.front().c_str(), Len);
+		m_DropFiles.pop_front();
 		return true;
 	}
 	return false;

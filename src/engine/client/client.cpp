@@ -3377,6 +3377,8 @@ void CClient::Run()
 				HandleDemoPath(aFile);
 			else if(str_endswith(aFile, ".map"))
 				HandleMapPath(aFile);
+			else
+				GameClient()->OnFogDropFile(aFile);
 		}
 
 #if defined(CONF_AUTOUPDATE)

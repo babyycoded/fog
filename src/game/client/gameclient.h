@@ -42,6 +42,17 @@
 #include "components/effects.h"
 #include "components/emoticon.h"
 #include "components/flow.h"
+#include "components/fog/lyrics_world.h"
+#include "components/fog/music.h"
+#include "components/fog/atmosphere.h"
+#include "components/fog/music_widget.h"
+#include "components/fog/accessories.h"
+#include "components/fog/painter.h"
+#include "components/fog/fx.h"
+#include "components/fog/presence.h"
+#include "components/fog/skin_catalog.h"
+#include "components/fog/tee_style.h"
+#include "components/fog/trails.h"
 #include "components/freezebars.h"
 #include "components/ghost.h"
 #include "components/hud.h"
@@ -189,6 +200,22 @@ public:
 	CMapLayers m_MapLayersForeground = CMapLayers{ERenderType::RENDERTYPE_FOREGROUND};
 	CBackground m_Background;
 	CMenuBackground m_MenuBackground;
+
+	// Fog client
+	CFogMusic m_FogMusic;
+	CFogLyricsWorld m_FogLyrics;
+	CFogLyricsFront m_FogLyricsFront;
+	CFogAtmosphere m_FogAtmosphereBack{false};
+	CFogPresence m_FogPresence;
+	CFogTeeStyle m_FogTeeStyle;
+	CFogAccessories m_FogAccessories;
+	CFogTeePainter m_FogPainter;
+	CFogSkinCatalog m_FogSkinCatalog;
+	CFogAtmosphere m_FogAtmosphereFront{true};
+	CFogMusicWidget m_FogMusicWidget;
+	CFogTrails m_FogTrails;
+	CFogFx m_FogFxBack{false};
+	CFogFx m_FogFxFront{true};
 
 	CMapSounds m_MapSounds;
 
@@ -607,6 +634,7 @@ public:
 
 	// hooks
 	void OnConnected() override;
+	void OnFogDropFile(const char *pPath) override { m_Menus.FogHandleDrop(pPath); }
 	void OnRender() override;
 	void OnUpdate() override;
 	void OnDummyDisconnect() override;

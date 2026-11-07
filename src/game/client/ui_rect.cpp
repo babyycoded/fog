@@ -5,6 +5,7 @@
 #include <engine/graphics.h>
 
 IGraphics *CUIRect::ms_pGraphics = nullptr;
+CUIRect::FDrawHook CUIRect::ms_pfnDrawHook = nullptr;
 
 void CUIRect::HSplitMid(CUIRect *pTop, CUIRect *pBottom, float Spacing) const
 {
@@ -168,6 +169,8 @@ bool CUIRect::Inside(vec2 Point) const
 
 void CUIRect::Draw(ColorRGBA Color, int Corners, float Rounding) const
 {
+	if(ms_pfnDrawHook && ms_pfnDrawHook(*this, Color, Corners, Rounding))
+		return;
 	ms_pGraphics->DrawRect(x, y, w, h, Color, Corners, Rounding);
 }
 

@@ -2,6 +2,7 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 
 #include "chat.h"
+#include "fog/glass.h"
 
 #include <base/color.h>
 #include <base/io.h>
@@ -24,6 +25,7 @@
 #include <game/client/components/scoreboard.h>
 #include <game/client/components/skins.h>
 #include <game/client/components/sounds.h>
+#include <game/client/ui.h>
 #include <game/client/gameclient.h>
 #include <game/localization.h>
 
@@ -1191,6 +1193,10 @@ void CChat::OnRender()
 		--m_PendingChatCounter;
 	}
 
+	// Fog: the Esc menu owns the screen; the HUD steps aside while it is open
+	if(g_Config.m_FogUi && g_Config.m_FogUiMenus && GameClient()->m_Menus.IsActive() && Client()->State() == IClient::STATE_ONLINE)
+		return;
+
 	const float Height = 300.0f;
 	const float Width = Height * Graphics()->ScreenAspect();
 	Graphics()->MapScreenToSize(Width, Height);
@@ -1198,6 +1204,8 @@ void CChat::OnRender()
 	float x = 5.0f;
 	float y = 300.0f - 20.0f * FontSize() / 6.0f;
 	float ScaledFontSize = FontSize() * (8.0f / 6.0f);
+	if(m_Mode == MODE_NONE)
+		m_FogInputOpen = 0.0f;
 	if(m_Mode != MODE_NONE)
 	{
 		// render chat input
@@ -1206,14 +1214,38 @@ void CChat::OnRender()
 		InputCursor.m_FontSize = ScaledFontSize;
 		InputCursor.m_LineWidth = Width - 190.0f;
 
-		if(m_Mode == MODE_ALL)
-			TextRender()->TextEx(&InputCursor, Localize("All"));
-		else if(m_Mode == MODE_TEAM)
-			TextRender()->TextEx(&InputCursor, Localize("Team"));
-		else
-			TextRender()->TextEx(&InputCursor, Localize("Chat"));
+		const char *pModeLabel = m_Mode == MODE_ALL ? Localize("All") : (m_Mode == MODE_TEAM ? Localize("Team") : Localize("Chat"));
+		if(g_Config.m_FogHud)
+		{
+			// Fog: the input is a smoked capsule that springs open, the mode is a chip in front
+			const float Speed = g_Config.m_FogAnim ? std::clamp(g_Config.m_FogAnimSpeed / 100.0f, 0.1f, 10.0f) : 1000.0f;
+			m_FogInputOpen = std::min(1.0f, m_FogInputOpen + std::min(Client()->RenderFrameTime(), 0.1f) * 5.0f * Speed);
+			const float Open = FogEaseOutBack(m_FogInputOpen);
+			const float Alpha = std::clamp(m_FogInputOpen * 3.0f, 0.0f, 1.0f);
+			const float BoxH = ScaledFontSize * 1.75f, BoxY = y - ScaledFontSize * 0.38f;
+			const float BoxW = (InputCursor.m_LineWidth + 12.0f) * (0.88f + 0.12f * Open);
+			Graphics()->TextureClear();
+			const ColorRGBA Top(0.11f, 0.12f, 0.15f, 0.72f * Alpha), Bottom(0.07f, 0.08f, 0.10f, 0.66f * Alpha);
+			Graphics()->DrawRect4(x - 3.0f, BoxY, BoxW, BoxH, Top, Top, Bottom, Bottom, IGraphics::CORNER_ALL, BoxH / 2.0f);
+			Graphics()->DrawRect(x - 3.0f + BoxH / 2.0f, BoxY + 0.4f, BoxW - BoxH, 0.5f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.14f * Alpha), IGraphics::CORNER_NONE, 0.0f);
 
-		TextRender()->TextEx(&InputCursor, ": ");
+			TextRender()->SetDisplayFont("Manrope", 700);
+			TextRender()->SetFontPreset(EFontPreset::DISPLAY_FONT);
+			const float ChipFont = ScaledFontSize * 0.75f;
+			const float ChipW = TextRender()->TextWidth(ChipFont, pModeLabel) + 8.0f;
+			TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+			const ColorRGBA ChipColor = m_Mode == MODE_TEAM ? ColorRGBA(0.60f, 0.86f, 0.72f, 1.0f) : ColorRGBA(0.80f, 0.86f, 0.94f, 1.0f);
+			const float ChipH = BoxH - 4.0f;
+			Graphics()->DrawRect(x - 1.0f, BoxY + 2.0f, ChipW, ChipH, ChipColor.WithAlpha(0.18f * Alpha), IGraphics::CORNER_ALL, ChipH / 2.0f);
+			CUIRect Chip = {x - 1.0f, BoxY + 2.0f, ChipW, ChipH};
+			FogLabel(Ui(), TextRender(), Chip, pModeLabel, ChipFont, TEXTALIGN_MC, ChipColor.WithAlpha(Alpha), "Manrope", 700);
+			InputCursor.m_X += ChipW + 4.0f;
+		}
+		else
+		{
+			TextRender()->TextEx(&InputCursor, pModeLabel);
+			TextRender()->TextEx(&InputCursor, ": ");
+		}
 
 		const float MessageMaxWidth = InputCursor.m_LineWidth - (InputCursor.m_X - InputCursor.m_StartX);
 		const CUIRect ClippingRect = {InputCursor.m_X, InputCursor.m_Y, MessageMaxWidth, 2.25f * InputCursor.m_FontSize};
@@ -1305,14 +1337,25 @@ void CChat::OnRender()
 
 		float Blend = Now > Line.m_Time + 14 * time_freq() && !m_PrevShowChat ? 1.0f - (Now - Line.m_Time - 14 * time_freq()) / (2.0f * time_freq()) : 1.0f;
 
+		// Fog: new lines slide in from the left with a small spring and fade up
+		float SlideX = 0.0f;
+		if(g_Config.m_FogHud && g_Config.m_FogAnim)
+		{
+			const float Speed = std::clamp(g_Config.m_FogAnimSpeed / 100.0f, 0.1f, 10.0f);
+			const float Age = (Now - Line.m_Time) / (float)time_freq() * Speed;
+			SlideX = (1.0f - FogEaseOutBack(std::min(Age * 3.5f, 1.0f))) * -14.0f;
+			Blend *= std::clamp(Age * 7.0f, 0.0f, 1.0f);
+		}
+
 		// Draw backgrounds for messages in one batch
 		if(!g_Config.m_ClChatOld)
 		{
 			Graphics()->TextureClear();
 			if(Line.m_QuadContainerIndex != -1)
 			{
-				Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend));
-				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, 0, ((y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset));
+				const ColorRGBA Background = g_Config.m_FogHud ? ColorRGBA(0.07f, 0.08f, 0.10f, 0.58f) : color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true));
+				Graphics()->SetColor(Background.WithMultipliedAlpha(Blend));
+				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, SlideX, ((y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset));
 			}
 		}
 
@@ -1328,12 +1371,13 @@ void CChat::OnRender()
 				float OffsetTeeY = TeeSize / 2.0f;
 				float FullHeightMinusTee = RowHeight - TeeSize;
 
-				RenderTools()->RenderIdleTeeAtCenter(&TeeRenderInfo, vec2(x + (RealMsgPaddingX + TeeSize) / 2.0f, y + OffsetTeeY + FullHeightMinusTee / 2.0f), EMOTE_NORMAL, vec2(1, 0.1f), Blend);
+				RenderTools()->RenderIdleTeeAtCenter(&TeeRenderInfo, vec2(SlideX + x + (RealMsgPaddingX + TeeSize) / 2.0f, y + OffsetTeeY + FullHeightMinusTee / 2.0f), EMOTE_NORMAL, vec2(1, 0.1f), Blend);
 			}
 
 			const ColorRGBA TextColor = TextRender()->DefaultTextColor().WithMultipliedAlpha(Blend);
-			const ColorRGBA TextOutlineColor = TextRender()->DefaultTextOutlineColor().WithMultipliedAlpha(Blend);
-			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, 0, (y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset);
+			// on the smoked Fog background a light outline is enough
+			const ColorRGBA TextOutlineColor = TextRender()->DefaultTextOutlineColor().WithMultipliedAlpha(Blend * (g_Config.m_FogHud ? 0.35f : 1.0f));
+			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, SlideX, (y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset);
 		}
 	}
 }

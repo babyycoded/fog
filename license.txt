@@ -30,6 +30,14 @@ DejaVuSans.ttf:
 Fonts are (c) Bitstream (see below). DejaVu changes are in public domain.
 Glyphs imported from Arev fonts are (c) Tavmjong Bah (see below)
 
+fonts/display/*.ttf (Fog client display fonts):
+-----------------------------------------------
+
+Nunito, Unbounded, Comfortaa, Rubik, Russo One, Caveat, Playfair Display,
+Press Start 2P, Cormorant Garamond, Amatic SC, Pacifico, Lobster, JetBrains Mono
+and Manrope are licensed under the SIL Open Font License, Version 1.1.
+Each font's copyright notice and license text is in data/fonts/display/licenses.
+
 Font_Awesome_6_Free-Solid-900.otf:
 ----------------------------------
 
