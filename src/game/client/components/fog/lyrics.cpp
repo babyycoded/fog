@@ -72,6 +72,72 @@ int CountLetters(const std::string &Text)
 	return Count;
 }
 
+bool IsVowel(int c)
+{
+	switch(c)
+	{
+	case 'a': case 'e': case 'i': case 'o': case 'u': case 'y':
+	case 'A': case 'E': case 'I': case 'O': case 'U': case 'Y':
+	// а е ё и о у ы э ю я
+	case 0x430: case 0x435: case 0x451: case 0x438: case 0x43E: case 0x443: case 0x44B: case 0x44D: case 0x44E: case 0x44F:
+	case 0x410: case 0x415: case 0x401: case 0x418: case 0x41E: case 0x423: case 0x42B: case 0x42D: case 0x42E: case 0x42F:
+		return true;
+	default:
+		// accented Latin vowels (à-ÿ, À-Ý) and other letters with a vowel base
+		return (c >= 0xC0 && c <= 0xC6) || (c >= 0xC8 && c <= 0xCF) || (c >= 0xD2 && c <= 0xD6) || (c >= 0xD9 && c <= 0xDD) ||
+		       (c >= 0xE0 && c <= 0xE6) || (c >= 0xE8 && c <= 0xEF) || (c >= 0xF2 && c <= 0xF6) || (c >= 0xF9 && c <= 0xFD);
+	}
+}
+
+bool IsLetter(int c)
+{
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c >= 0xC0;
+}
+
+// letter weights and syllable count of a word; the last syllable of a line is held longer
+void WeighWord(SLyricWord &Word, bool LineEnd)
+{
+	std::vector<float> vWeights;
+	std::vector<bool> vVowel;
+	const char *p = Word.m_Text.c_str();
+	while(*p)
+	{
+		const int c = str_utf8_decode(&p);
+		if(c <= 0)
+			break;
+		if(c <= ' ')
+			continue;
+		const bool Vowel = IsVowel(c);
+		vVowel.push_back(Vowel);
+		vWeights.push_back(Vowel ? 2.6f : (IsLetter(c) ? 1.0f : 0.25f));
+	}
+	int Syllables = 0;
+	for(size_t i = 0; i < vVowel.size(); i++)
+		if(vVowel[i] && (i == 0 || !vVowel[i - 1]))
+			Syllables++;
+	Word.m_Syllables = std::max(Syllables, 1);
+	if(LineEnd)
+	{
+		// the final vowel is sung long
+		for(int i = (int)vVowel.size() - 1; i >= 0; i--)
+			if(vVowel[i])
+			{
+				vWeights[i] *= 2.2f;
+				break;
+			}
+	}
+	float Total = 0.0f;
+	for(float w : vWeights)
+		Total += w;
+	Word.m_vLetterEnd.clear();
+	float Acc = 0.0f;
+	for(float w : vWeights)
+	{
+		Acc += w;
+		Word.m_vLetterEnd.push_back(Total > 0.0f ? Acc / Total : 1.0f);
+	}
+}
+
 struct SRawWord
 {
 	std::string m_Text;
@@ -213,6 +279,37 @@ bool CLyrics::Parse(const char *pLrc, int64_t TrackLengthMs)
 			Raw.m_TrailingMs = Adjust(Raw.m_TrailingMs);
 	}
 
+	// The song's own pace: in lines that follow each other closely, the time to the next line is
+	// about the time the line takes to sing, so the median time per syllable there is the tempo.
+	const auto LineSyllables = [](const SRawLine &Raw) {
+		int Total = 0;
+		for(const SRawWord &RawWord : Raw.m_vWords)
+		{
+			SLyricWord Word;
+			Word.m_Text = RawWord.m_Text;
+			WeighWord(Word, false);
+			Total += Word.m_Syllables;
+		}
+		return Total;
+	};
+	float SyllableMs = 230.0f;
+	{
+		std::vector<float> vRates;
+		for(size_t i = 0; i + 1 < vRaw.size(); i++)
+		{
+			const int64_t Gap = vRaw[i + 1].m_StartMs - vRaw[i].m_StartMs;
+			const int Syllables = LineSyllables(vRaw[i]);
+			if(Gap > 600 && Gap < 5000 && Syllables >= 3)
+				vRates.push_back((float)Gap / Syllables);
+		}
+		if(vRates.size() >= 4)
+		{
+			std::nth_element(vRates.begin(), vRates.begin() + vRates.size() / 2, vRates.end());
+			// a little faster than the median: lines rarely fill their whole gap
+			SyllableMs = std::clamp(vRates[vRates.size() / 2] * 0.85f, 130.0f, 450.0f);
+		}
+	}
+
 	for(size_t i = 0; i < vRaw.size(); i++)
 	{
 		const SRawLine &Raw = vRaw[i];
@@ -221,13 +318,15 @@ bool CLyrics::Parse(const char *pLrc, int64_t TrackLengthMs)
 		Line.m_NextStartMs = i + 1 < vRaw.size() ? vRaw[i + 1].m_StartMs : (TrackLengthMs > Raw.m_StartMs ? TrackLengthMs : Raw.m_StartMs + 8000);
 		const int64_t Gap = std::max<int64_t>(Line.m_NextStartMs - Line.m_StartMs, 1);
 
-		int TotalLetters = 0;
-		for(const SRawWord &RawWord : Raw.m_vWords)
+		int TotalSyllables = 0;
+		for(size_t w = 0; w < Raw.m_vWords.size(); w++)
 		{
+			const SRawWord &RawWord = Raw.m_vWords[w];
 			SLyricWord Word;
 			Word.m_Text = RawWord.m_Text;
 			Word.m_NumLetters = std::max(CountLetters(RawWord.m_Text), 1);
-			TotalLetters += Word.m_NumLetters;
+			WeighWord(Word, w + 1 == Raw.m_vWords.size());
+			TotalSyllables += Word.m_Syllables;
 			if(!Line.m_Text.empty())
 				Line.m_Text += ' ';
 			Line.m_Text += RawWord.m_Text;
@@ -237,6 +336,7 @@ bool CLyrics::Parse(const char *pLrc, int64_t TrackLengthMs)
 		const bool AllTimed = !Raw.m_vWords.empty() && std::all_of(Raw.m_vWords.begin(), Raw.m_vWords.end(), [](const SRawWord &w) { return w.m_StartMs >= 0; });
 		if(AllTimed)
 		{
+			// the file knows when each word starts: trust it
 			for(size_t w = 0; w < Line.m_vWords.size(); w++)
 			{
 				SLyricWord &Word = Line.m_vWords[w];
@@ -247,30 +347,37 @@ bool CLyrics::Parse(const char *pLrc, int64_t TrackLengthMs)
 				else if(Raw.m_TrailingMs >= 0)
 					End = Raw.m_TrailingMs;
 				else
-					End = std::min<int64_t>(Word.m_StartMs + 120 + 90 * Word.m_NumLetters, Line.m_NextStartMs);
+					End = std::min<int64_t>(Word.m_StartMs + (int64_t)(SyllableMs * (Word.m_Syllables + 1.0f)), Line.m_NextStartMs);
 				Word.m_EndMs = std::max<int64_t>(End, Word.m_StartMs + 1);
 			}
 		}
 		else if(!Line.m_vWords.empty())
 		{
-			// No word timings: assume a natural singing pace, never longer than the gap.
-			// bounds can cross for very short gaps (lines < ~330 ms apart): the gap always wins
+			// No word timings: the line takes as long as its syllables at the song's pace (the last
+			// one held a bit), never longer than the gap to the next line.
 			const int64_t MinSpan = std::min<int64_t>(300, Gap);
-			const int64_t MaxSpan = std::max<int64_t>(MinSpan, (int64_t)(Gap * 0.9f));
-			const int64_t Span = std::clamp<int64_t>(350 + 75 * (int64_t)TotalLetters, MinSpan, MaxSpan);
-			// Weight each word by its letters plus one for the breath between words.
-			const int TotalWeight = TotalLetters + (int)Line.m_vWords.size();
-			int64_t Cursor = Line.m_StartMs;
-			int Accum = 0;
-			for(SLyricWord &Word : Line.m_vWords)
+			const int64_t MaxSpan = std::max<int64_t>(MinSpan, (int64_t)(Gap * 0.92f));
+			const int64_t Span = std::clamp<int64_t>((int64_t)(SyllableMs * (TotalSyllables + 0.8f)) + 80, MinSpan, MaxSpan);
+			// each word weighs its syllables (the last word a little more, it is sustained),
+			// plus a short breath between words
+			constexpr float BREATH = 0.22f;
+			std::vector<float> vWeights;
+			float TotalWeight = 0.0f;
+			for(size_t w = 0; w < Line.m_vWords.size(); w++)
 			{
-				Word.m_StartMs = Cursor;
-				Accum += Word.m_NumLetters + 1;
-				const int64_t Boundary = Line.m_StartMs + Span * Accum / TotalWeight;
-				// the breath share sits after the word
-				const int64_t BreathMs = Span / TotalWeight;
-				Word.m_EndMs = std::max<int64_t>(Boundary - BreathMs, Word.m_StartMs + 1);
-				Cursor = Boundary;
+				const SLyricWord &Word = Line.m_vWords[w];
+				const float Weight = (Word.m_Syllables + 0.12f * Word.m_NumLetters) * (w + 1 == Line.m_vWords.size() ? 1.5f : 1.0f);
+				vWeights.push_back(Weight);
+				TotalWeight += Weight + (w + 1 < Line.m_vWords.size() ? BREATH : 0.0f);
+			}
+			float Acc = 0.0f;
+			for(size_t w = 0; w < Line.m_vWords.size(); w++)
+			{
+				SLyricWord &Word = Line.m_vWords[w];
+				Word.m_StartMs = Line.m_StartMs + (int64_t)(Span * Acc / TotalWeight);
+				Acc += vWeights[w];
+				Word.m_EndMs = std::max<int64_t>(Line.m_StartMs + (int64_t)(Span * Acc / TotalWeight), Word.m_StartMs + 1);
+				Acc += BREATH;
 			}
 		}
 
@@ -299,6 +406,11 @@ float CLyrics::WordProgress(const SLyricWord &Word, int64_t TimeMs)
 
 float CLyrics::LetterProgress(const SLyricWord &Word, int Letter, int64_t TimeMs)
 {
-	const float Progress = WordProgress(Word, TimeMs) * Word.m_NumLetters;
-	return std::clamp(Progress - Letter, 0.0f, 1.0f);
+	const float Progress = WordProgress(Word, TimeMs);
+	if(Word.m_vLetterEnd.empty() || Letter < 0 || Letter >= (int)Word.m_vLetterEnd.size())
+		return std::clamp(Progress * Word.m_NumLetters - Letter, 0.0f, 1.0f);
+	// follow the weighted letter ends: vowels take longer to fill than consonants
+	const float Start = Letter == 0 ? 0.0f : Word.m_vLetterEnd[Letter - 1];
+	const float End = Word.m_vLetterEnd[Letter];
+	return std::clamp((Progress - Start) / std::max(End - Start, 1e-4f), 0.0f, 1.0f);
 }

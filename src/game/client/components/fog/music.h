@@ -76,6 +76,9 @@ private:
 	std::string m_TrackKey;
 	CLyrics m_Lyrics;
 	ELyricsStatus m_LyricsStatus = ELyricsStatus::NONE;
+	// the smoothed playback clock (PositionMs)
+	mutable double m_SmoothUs = 0.0;
+	mutable int64_t m_SmoothNs = 0;
 	int m_Revision = 0;
 
 	std::shared_ptr<IHttpRequest> m_pLyricsRequest;

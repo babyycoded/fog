@@ -435,6 +435,30 @@ void CMenus::RenderSettingsFogVisuals(CUIRect MainView, int Section)
 	else if(Section == 3)
 	{
 		static CButtonContainer s_GlassTintReset;
+		Headline(LeftColumn, Localize("Font"));
+		{
+			// one family for every text in the game (missing letters fall back to the game fonts)
+			static std::vector<std::string> s_vGameFamilies;
+			static std::vector<const char *> s_vpGameNames;
+			if(s_vGameFamilies.empty())
+			{
+				s_vGameFamilies.emplace_back(Localize("Game font"));
+				for(const std::string &Family : TextRender()->DisplayFontFamilies())
+					s_vGameFamilies.push_back(Family);
+				for(const std::string &Family : s_vGameFamilies)
+					s_vpGameNames.push_back(Family.c_str());
+			}
+			int Current = 0;
+			for(size_t i = 1; i < s_vGameFamilies.size(); i++)
+				if(str_comp_nocase(s_vGameFamilies[i].c_str(), g_Config.m_FogFont) == 0)
+					Current = (int)i;
+			static CUi::SDropDownState s_GameFontState;
+			static CScrollRegion s_GameFontRegion;
+			const int New = DropDown(LeftColumn, Localize("Font of the game"), Current, s_vpGameNames.data(), (int)s_vpGameNames.size(), s_GameFontState, s_GameFontRegion);
+			if(New != Current)
+				str_copy(g_Config.m_FogFont, New == 0 ? "" : s_vGameFamilies[New].c_str());
+		}
+		Gap(LeftColumn);
 		Headline(LeftColumn, Localize("Animation"));
 		CheckBox(LeftColumn, &g_Config.m_FogAnim, Localize("Animate the Fog interface and lyrics"));
 		if(g_Config.m_FogAnim)

@@ -241,7 +241,9 @@ bool ReadPlayer(DBusConnection *pConn, const std::string &BusName, SMediaState &
 		return false;
 	const char *pIface = MPRIS_PLAYER_IFACE;
 	dbus_message_append_args(Msg.m_pMsg, DBUS_TYPE_STRING, &pIface, DBUS_TYPE_INVALID);
+	const int64_t SentNs = NowNs();
 	SDBusMessage Reply(Call(pConn, Msg.m_pMsg));
+	const int64_t ReceivedNs = NowNs();
 	if(!Reply.m_pMsg)
 		return false;
 
@@ -252,7 +254,8 @@ bool ReadPlayer(DBusConnection *pConn, const std::string &BusName, SMediaState &
 	State = SMediaState();
 	State.m_Available = true;
 	State.m_Player = BusName.substr(str_length(MPRIS_PREFIX));
-	State.m_SampleTimeNs = NowNs();
+	// the player read its position somewhere during the round trip: the middle is the best guess
+	State.m_SampleTimeNs = SentNs + (ReceivedNs - SentNs) / 2;
 
 	DBusMessageIter Arr;
 	dbus_message_iter_recurse(&It, &Arr);

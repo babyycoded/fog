@@ -257,7 +257,63 @@ void CMenus::RenderFogStudio(CUIRect Screen)
 			};
 			if(m_FogStudioAccessory >= (int)vWorn.size())
 				m_FogStudioAccessory = -1;
-			if(Ui()->CheckActiveItem(&s_AccDragId))
+
+			// a small cross on the piece under the mouse (or the selected one) takes it off
+			int CrossFor = -1;
+			CUIRect CrossRect = {0, 0, 0, 0};
+			if(!Ui()->CheckActiveItem(&s_AccDragId) && !s_Carrying)
+			{
+				for(int i = (int)vWorn.size() - 1; i >= 0 && CrossFor < 0; i--)
+				{
+					vec2 Center;
+					float Size;
+					if(!Accessories.LastRect(AccSlot, i, Center, Size))
+						continue;
+					const float r = std::max(Size * 0.42f, 10.0f);
+					const vec2 CrossPos = Center + vec2(r * 0.8f, -r * 0.8f);
+					const bool Near = distance(Mouse, Center) < r || distance(Mouse, CrossPos) < 9.0f;
+					if(Near || (i == m_FogStudioAccessory && CrossFor < 0 && distance(Mouse, CrossPos) < 9.0f))
+					{
+						CrossFor = i;
+						CrossRect = {CrossPos.x - 7.0f, CrossPos.y - 7.0f, 14.0f, 14.0f};
+					}
+				}
+				if(CrossFor < 0 && m_FogStudioAccessory >= 0)
+				{
+					vec2 Center;
+					float Size;
+					if(Accessories.LastRect(AccSlot, m_FogStudioAccessory, Center, Size))
+					{
+						const float r = std::max(Size * 0.42f, 10.0f);
+						const vec2 CrossPos = Center + vec2(r * 0.8f, -r * 0.8f);
+						CrossFor = m_FogStudioAccessory;
+						CrossRect = {CrossPos.x - 7.0f, CrossPos.y - 7.0f, 14.0f, 14.0f};
+					}
+				}
+			}
+			bool CrossClicked = false;
+			if(CrossFor >= 0)
+			{
+				const bool Hot = Ui()->MouseInside(&CrossRect);
+				Graphics()->TextureClear();
+				Graphics()->DrawRect(CrossRect.x, CrossRect.y, CrossRect.w, CrossRect.h, Hot ? ColorRGBA(0.85f, 0.42f, 0.48f, 0.95f) : ColorRGBA(0.12f, 0.13f, 0.16f, 0.85f), IGraphics::CORNER_ALL, CrossRect.h / 2.0f);
+				Icon(TextRender(), Ui(), CrossRect, FontIcon::XMARK, 7.0f, FROST);
+				if(Hot && Ui()->MouseButtonClicked(0) && !Ui()->ActiveItem())
+				{
+					vWorn.erase(vWorn.begin() + CrossFor);
+					if(m_FogStudioAccessory == CrossFor)
+						m_FogStudioAccessory = -1;
+					else if(m_FogStudioAccessory > CrossFor)
+						m_FogStudioAccessory--;
+					Accessories.Save(AccSlot);
+					CrossClicked = true;
+				}
+			}
+			if(CrossClicked)
+			{
+				// taken off; nothing to drag this click
+			}
+			else if(Ui()->CheckActiveItem(&s_AccDragId))
 			{
 				if(Ui()->MouseButton(0) && m_FogStudioAccessory >= 0)
 				{
@@ -1144,9 +1200,35 @@ void CMenus::RenderFogStudio(CUIRect Screen)
 				std::vector<const char *> vpNames;
 				for(const SFogAccessory &Acc : vWorn)
 					vpNames.push_back(Localize(pDefs[Acc.m_Def].m_pName));
+				const float ChipsTop = Column.y;
 				const int Picked = Chips(Column, s_aWornButtons, vpNames.data(), (int)vpNames.size(), m_FogStudioAccessory, 4);
-				if(Picked >= 0)
-					m_FogStudioAccessory = Picked;
+				// a cross on the hovered chip takes that piece off
+				{
+					const float Gap = 6.0f, H = 24.0f;
+					const float W = (Column.w - 3 * Gap) / 4;
+					int Remove = -1;
+					for(int i = 0; i < (int)vWorn.size(); i++)
+					{
+						const CUIRect Chip = {Column.x + (i % 4) * (W + Gap), ChipsTop + (i / 4) * (H + Gap), W, H};
+						if(!Ui()->MouseInside(&Chip))
+							continue;
+						const CUIRect X = {Chip.x + Chip.w - H + 3.0f, Chip.y + 3.0f, H - 6.0f, H - 6.0f};
+						const bool Hot = Ui()->MouseInside(&X);
+						Graphics()->TextureClear();
+						Graphics()->DrawRect(X.x, X.y, X.w, X.h, Hot ? ColorRGBA(0.85f, 0.42f, 0.48f, 0.95f) : ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_ALL, X.h / 2.0f);
+						Icon(TextRender(), Ui(), X, FontIcon::XMARK, 7.0f, FROST);
+						if(Hot && Ui()->MouseButtonClicked(0))
+							Remove = i;
+					}
+					if(Remove >= 0)
+					{
+						vWorn.erase(vWorn.begin() + Remove);
+						m_FogStudioAccessory = -1;
+						Accessories.Save(AccSlot);
+					}
+					else if(Picked >= 0)
+						m_FogStudioAccessory = Picked;
+				}
 			}
 			if(m_FogStudioAccessory >= 0 && m_FogStudioAccessory < (int)vWorn.size())
 			{

@@ -58,9 +58,11 @@ private:
 	{
 		std::string m_Skin;
 		bool m_Failed = false;
-		CImageInfo m_Base; // upscaled original skin
-		CImageInfo m_Gray; // the same, made colourable (grayscale with the body weighting)
-		CImageInfo m_Work; // re-coloured copy that gets uploaded
+		// two sizes: [0] for the game (about 2x), [1] sharp for the big menu tees (about 4x)
+		CImageInfo m_aBase[2]; // upscaled original skin
+		CImageInfo m_aGray[2]; // the same, made colourable (grayscale with the body weighting)
+		CImageInfo m_aWork[2]; // re-coloured copy that gets uploaded
+		int m_LastLevel = -1;
 		CSkin::CSkinTextures m_Textures; // outlines and eyes stay, body/feet/hands are baked
 		float m_LastBake = -1.0f;
 		float m_LastUsed = 0.0f;
@@ -68,8 +70,8 @@ private:
 
 	bool LoadSlot(SSlot &Slot, const char *pSkinName);
 	void UnloadSlot(SSlot &Slot);
-	void Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook &Look, float Time);
-	bool BakeInto(SSlot &Slot, CTeeRenderInfo &Info, const SFogLook &Look, const char *pSkinName, float Rate);
+	void Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook &Look, float Time, int L);
+	bool BakeInto(SSlot &Slot, CTeeRenderInfo &Info, const SFogLook &Look, const char *pSkinName, float Rate, bool AllowSharp = true);
 	void LoadPattern();
 	void SyncDummy();
 

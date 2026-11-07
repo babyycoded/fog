@@ -117,9 +117,13 @@ void CFogTeeStyle::UnloadSlot(SSlot &Slot)
 {
 	Slot.m_Textures.Unload(Graphics());
 	Slot.m_Textures.Reset();
-	Slot.m_Base.Free();
-	Slot.m_Gray.Free();
-	Slot.m_Work.Free();
+	for(int L = 0; L < 2; L++)
+	{
+		Slot.m_aBase[L].Free();
+		Slot.m_aGray[L].Free();
+		Slot.m_aWork[L].Free();
+	}
+	Slot.m_LastLevel = -1;
 	Slot.m_Skin.clear();
 	Slot.m_Failed = false;
 	Slot.m_LastBake = -1.0f;
@@ -167,20 +171,23 @@ bool CFogTeeStyle::LoadSlot(SSlot &Slot, const char *pSkinName)
 		Slot.m_Failed = true;
 		return false;
 	}
-	// a body part of about 192 px: sharp in the big studio preview, still cheap to re-colour
-	const int Factor = std::clamp((int)std::lround(512.0f / Image.m_Width), 1, 4);
-	FogUpscaleSkin(Image, Factor, Slot.m_Base);
+	// a body part of about 192 px for the game and about 384 px for the big menu tees
+	for(int L = 0; L < 2; L++)
+	{
+		const int Factor = std::clamp((int)std::lround((L == 0 ? 512.0f : 1024.0f) / Image.m_Width), 1, 4);
+		FogUpscaleSkin(Image, Factor, Slot.m_aBase[L]);
+		Slot.m_aGray[L] = Slot.m_aBase[L].DeepCopy();
+		FogMakeColorable(Slot.m_aGray[L]);
+		Slot.m_aWork[L] = Slot.m_aBase[L].DeepCopy();
+	}
 	Image.Free();
-	Slot.m_Gray = Slot.m_Base.DeepCopy();
-	FogMakeColorable(Slot.m_Gray);
-	Slot.m_Work = Slot.m_Base.DeepCopy();
 
 	CSkin::CSkinTextures &t = Slot.m_Textures;
-	t.m_BodyOutline = Graphics()->LoadSpriteTexture(Slot.m_Base, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_BODY_OUTLINE]);
-	t.m_FeetOutline = Graphics()->LoadSpriteTexture(Slot.m_Base, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_FOOT_OUTLINE]);
-	t.m_HandsOutline = Graphics()->LoadSpriteTexture(Slot.m_Base, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_HAND_OUTLINE]);
+	t.m_BodyOutline = Graphics()->LoadSpriteTexture(Slot.m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_BODY_OUTLINE]);
+	t.m_FeetOutline = Graphics()->LoadSpriteTexture(Slot.m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_FOOT_OUTLINE]);
+	t.m_HandsOutline = Graphics()->LoadSpriteTexture(Slot.m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_HAND_OUTLINE]);
 	for(size_t i = 0; i < std::size(t.m_aEyes); i++)
-		t.m_aEyes[i] = Graphics()->LoadSpriteTexture(Slot.m_Base, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_EYE_NORMAL + i]);
+		t.m_aEyes[i] = Graphics()->LoadSpriteTexture(Slot.m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_EYE_NORMAL + i]);
 	return true;
 }
 
@@ -214,7 +221,7 @@ void CFogTeeStyle::LoadPattern()
 	}
 }
 
-void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook &L, float Time)
+void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook &L, float Time, int Level)
 {
 	const bool Invert = L.m_Invert;
 	const int Mode = L.m_ColorMode;
@@ -312,22 +319,22 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 		const float Base = std::min(s, 1.0f), Highlight = std::max(s - 1.0f, 0.0f) * 0.3f;
 		return SRgb{c.r * Base + Highlight, c.g * Base + Highlight, c.b * Base + Highlight};
 	};
-	const size_t Pitch = Slot.m_Work.m_Width * 4;
+	const size_t Pitch = Slot.m_aWork[Level].m_Width * 4;
 
 	// body: colour + pattern, shaded by the colourable skin
 	{
-		const SSpriteRect r = SpriteRect(Slot.m_Work, SPRITE_TEE_BODY);
+		const SSpriteRect r = SpriteRect(Slot.m_aWork[Level], SPRITE_TEE_BODY);
 		for(int y = 0; y < r.h; y++)
 			for(int x = 0; x < r.w; x++)
 			{
 				const size_t i = (size_t)(r.y + y) * Pitch + (size_t)(r.x + x) * 4;
-				if(Slot.m_Base.m_pData[i + 3] == 0)
+				if(Slot.m_aBase[Level].m_pData[i + 3] == 0)
 					continue;
 				const float u = (x + 0.5f) / r.w, v = (y + 0.5f) / r.h;
-				const float g = Slot.m_Gray.m_pData[i] / 255.0f;
+				const float g = Slot.m_aGray[Level].m_pData[i] / 255.0f;
 				SRgb Base;
 				if(GameColours && !Game.m_CustomColoredSkin)
-					Base = Inv({Slot.m_Base.m_pData[i] / 255.0f, Slot.m_Base.m_pData[i + 1] / 255.0f, Slot.m_Base.m_pData[i + 2] / 255.0f});
+					Base = Inv({Slot.m_aBase[Level].m_pData[i] / 255.0f, Slot.m_aBase[Level].m_pData[i + 1] / 255.0f, Slot.m_aBase[Level].m_pData[i + 2] / 255.0f});
 				else if(GameColours)
 					Base = Shade(GameBody, g); // exactly like the game's custom colours
 				else
@@ -339,7 +346,7 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 					if(m > 0.0f)
 						Base = Mix(Base, Shade(Pat, g / BASE_SHADE), m);
 				}
-				Write(&Slot.m_Work.m_pData[i], Base);
+				Write(&Slot.m_aWork[Level].m_pData[i], Base);
 			}
 	}
 
@@ -367,18 +374,18 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 	} aParts[] = {{SPRITE_TEE_FOOT, Feet, FeetOwnPixels}, {SPRITE_TEE_HAND, Hands, GameColours && !Game.m_CustomColoredSkin}};
 	for(const auto &Part : aParts)
 	{
-		const SSpriteRect r = SpriteRect(Slot.m_Work, Part.m_Sprite);
+		const SSpriteRect r = SpriteRect(Slot.m_aWork[Level], Part.m_Sprite);
 		const float Gain = (GameColours || (Part.m_Sprite == SPRITE_TEE_FOOT && L.m_FeetMode == 1)) ? 1.0f : 1.0f / BASE_SHADE;
 		for(int y = 0; y < r.h; y++)
 			for(int x = 0; x < r.w; x++)
 			{
 				const size_t i = (size_t)(r.y + y) * Pitch + (size_t)(r.x + x) * 4;
-				if(Slot.m_Base.m_pData[i + 3] == 0)
+				if(Slot.m_aBase[Level].m_pData[i + 3] == 0)
 					continue;
 				if(Part.m_OwnPixels)
-					Write(&Slot.m_Work.m_pData[i], Inv({Slot.m_Base.m_pData[i] / 255.0f, Slot.m_Base.m_pData[i + 1] / 255.0f, Slot.m_Base.m_pData[i + 2] / 255.0f}));
+					Write(&Slot.m_aWork[Level].m_pData[i], Inv({Slot.m_aBase[Level].m_pData[i] / 255.0f, Slot.m_aBase[Level].m_pData[i + 1] / 255.0f, Slot.m_aBase[Level].m_pData[i + 2] / 255.0f}));
 				else
-					Write(&Slot.m_Work.m_pData[i], Shade(Part.m_Color, Slot.m_Gray.m_pData[i] / 255.0f * Gain));
+					Write(&Slot.m_aWork[Level].m_pData[i], Shade(Part.m_Color, Slot.m_aGray[Level].m_pData[i] / 255.0f * Gain));
 			}
 	}
 
@@ -386,20 +393,23 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 	Graphics()->UnloadTexture(&t.m_Body);
 	Graphics()->UnloadTexture(&t.m_Feet);
 	Graphics()->UnloadTexture(&t.m_Hands);
-	t.m_Body = Graphics()->LoadSpriteTexture(Slot.m_Work, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_BODY]);
-	t.m_Feet = Graphics()->LoadSpriteTexture(Slot.m_Work, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_FOOT]);
-	t.m_Hands = Graphics()->LoadSpriteTexture(Slot.m_Work, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_HAND]);
+	t.m_Body = Graphics()->LoadSpriteTexture(Slot.m_aWork[Level], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_BODY]);
+	t.m_Feet = Graphics()->LoadSpriteTexture(Slot.m_aWork[Level], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_FOOT]);
+	t.m_Hands = Graphics()->LoadSpriteTexture(Slot.m_aWork[Level], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_HAND]);
 }
 
-bool CFogTeeStyle::BakeInto(SSlot &s, CTeeRenderInfo &Info, const SFogLook &Look, const char *pSkinName, float Rate)
+bool CFogTeeStyle::BakeInto(SSlot &s, CTeeRenderInfo &Info, const SFogLook &Look, const char *pSkinName, float Rate, bool AllowSharp)
 {
 	if(!pSkinName || !pSkinName[0] || !LoadSlot(s, pSkinName))
 		return false;
+	// in the menus the tee is drawn big: bake the sharp size; in game the lighter one
+	const int Level = AllowSharp && (Client()->State() != IClient::STATE_ONLINE || GameClient()->m_Menus.IsActive()) ? 1 : 0;
 	const float Now = Client()->GlobalTime();
-	if(s.m_LastBake < 0.0f || Now - s.m_LastBake >= 1.0f / Rate || Now < s.m_LastBake)
+	if(s.m_LastBake < 0.0f || Now - s.m_LastBake >= 1.0f / Rate || Now < s.m_LastBake || Level != s.m_LastLevel)
 	{
 		s.m_LastBake = Now;
-		Bake(s, Info, Look, Now);
+		s.m_LastLevel = Level;
+		Bake(s, Info, Look, Now, Level);
 	}
 	Info.m_OriginalRenderSkin = s.m_Textures;
 	Info.m_CustomColoredSkin = false;
@@ -429,7 +439,7 @@ bool CFogTeeStyle::ApplyRemote(CTeeRenderInfo &Info, int ClientId, const SFogLoo
 	SSlot &s = m_Remote[ClientId];
 	s.m_LastUsed = Client()->GlobalTime();
 	// other players are baked at a calmer rate; fine at game size
-	return BakeInto(s, Info, Look, pSkinName, 30.0f);
+	return BakeInto(s, Info, Look, pSkinName, 30.0f, false);
 }
 
 void CFogTeeStyle::SyncDummy()

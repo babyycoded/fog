@@ -154,7 +154,7 @@ CFogLyricsWorld::SLineCache *CFogLyricsWorld::GetLine(int Key, const SLyricLine 
 	Cache.m_FontSize = FontSize;
 	Cache.m_ScreenWidth = ScreenWidth;
 	Cache.m_LastUsedFrame = m_Frame;
-	TextRender()->SetDisplayFont(g_Config.m_FogLyricsFont, g_Config.m_FogLyricsWeight);
+	TextRender()->SetDisplayFont(g_Config.m_FogLyricsFont, g_Config.m_FogLyricsWeight, true);
 	TextRender()->SetFontPreset(EFontPreset::DISPLAY_FONT);
 	const float RasterSize = FontSize * OVERSAMPLE;
 	Cache.m_SpaceWidth = TextRender()->TextWidth(RasterSize, " ") / OVERSAMPLE * 1.05f;

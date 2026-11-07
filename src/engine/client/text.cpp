@@ -336,6 +336,7 @@ private:
 	FT_Face m_VariantFace = nullptr;
 	FT_Face m_SelectedFace = nullptr;
 	std::vector<FT_Face> m_vFallbackFaces;
+	FT_Face m_GlobalFace = nullptr; // Fog: the font chosen for all game text (display font)
 	std::vector<FT_Face> m_vFtFaces;
 
 	// Display font: one face per weight instance, created from the same font data, so the
@@ -424,7 +425,7 @@ private:
 
 	FT_UInt GetCharGlyph(int Chr, FT_Face *pFace, bool AllowReplacementCharacter)
 	{
-		for(FT_Face Face : {m_SelectedFace, m_DefaultFace, m_VariantFace})
+		for(FT_Face Face : {m_SelectedFace, m_GlobalFace, m_DefaultFace, m_VariantFace})
 		{
 			if(Face && Face->charmap)
 			{
@@ -672,6 +673,14 @@ public:
 
 	// Picks the display font: a variable font gets an instance at exactly Weight, a family of
 	// static files gets its closest weight. Unknown family: the default font is used.
+	void SetGlobalFace(FT_Library Library, const char *pFamily, int Weight)
+	{
+		FT_Face Saved = m_ActiveDisplayFace;
+		SelectDisplayFont(Library, pFamily, Weight);
+		m_GlobalFace = pFamily && pFamily[0] ? m_ActiveDisplayFace : nullptr;
+		m_ActiveDisplayFace = Saved;
+	}
+
 	void SelectDisplayFont(FT_Library Library, const char *pFamily, int Weight)
 	{
 		m_ActiveDisplayFace = nullptr;
@@ -1498,10 +1507,22 @@ public:
 		log_info("textrender", "Loaded %d display fonts", (int)m_pGlyphMap->DisplayFamilies().size());
 	}
 
-	void SetDisplayFont(const char *pFamily, int Weight) override
+	void SetDisplayFont(const char *pFamily, int Weight, bool Exact) override
 	{
-		m_pGlyphMap->SelectDisplayFont(m_FTLibrary, pFamily, Weight);
+		// the game font, when chosen, replaces the interface's own display families too
+		const bool UseGlobal = m_aGlobalFamily[0] && (!Exact || !pFamily || !pFamily[0]);
+		m_pGlyphMap->SelectDisplayFont(m_FTLibrary, UseGlobal ? m_aGlobalFamily : pFamily, Weight);
 	}
+
+	char m_aGlobalFamily[64] = "";
+
+	void SetGlobalFont(const char *pFamily) override
+	{
+		str_copy(m_aGlobalFamily, pFamily ? pFamily : "");
+		m_pGlyphMap->SetGlobalFace(m_FTLibrary, m_aGlobalFamily, 500);
+	}
+
+	const char *GlobalFont() const override { return m_aGlobalFamily; }
 
 	std::vector<std::string> DisplayFontFamilies() const override
 	{

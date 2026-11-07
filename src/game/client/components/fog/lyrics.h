@@ -11,6 +11,10 @@ struct SLyricWord
 	int64_t m_StartMs = 0;
 	int64_t m_EndMs = 0;
 	int m_NumLetters = 0; // UTF-8 codepoints that are not spaces
+	int m_Syllables = 1; // vowel groups
+	// where each letter finishes, as a fraction of the word's time: vowels are held longer
+	// than consonants, so the highlight follows the singing instead of moving evenly
+	std::vector<float> m_vLetterEnd;
 };
 
 struct SLyricLine

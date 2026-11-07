@@ -1394,6 +1394,12 @@ void CGameClient::OnLanguageChange()
 
 void CGameClient::HandleLanguageChanged()
 {
+	// Fog: a new game font rebuilds all text the same way a language change does
+	if(str_comp(TextRender()->GlobalFont(), g_Config.m_FogFont) != 0)
+	{
+		TextRender()->SetGlobalFont(g_Config.m_FogFont);
+		m_LanguageChanged = true;
+	}
 	if(!m_LanguageChanged)
 		return;
 	m_LanguageChanged = false;

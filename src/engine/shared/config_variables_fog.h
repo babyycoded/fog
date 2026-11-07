@@ -197,3 +197,4 @@ MACRO_CONFIG_INT(FogFunFinish, fog_fun_finish, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG
 MACRO_CONFIG_INT(FogFunNotes, fog_fun_notes, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notes float out of the headphones accessory while music plays")
 MACRO_CONFIG_INT(FogHolidays, fog_holidays, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Holiday atmosphere: New Year, Halloween, Valentine's Day, March 8 (by your clock)")
 MACRO_CONFIG_INT(FogHolidayPreview, fog_holiday_preview, 0, 0, 4, CFGFLAG_CLIENT, "Preview a holiday now: 0 by date, 1 New Year, 2 Halloween, 3 Valentine's Day, 4 March 8")
+MACRO_CONFIG_STR(FogFont, fog_font, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Font for all game text, from fonts/display (empty = the game's own fonts)")

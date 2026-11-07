@@ -11,6 +11,7 @@
 #include <engine/shared/json.h>
 #include <engine/storage.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <vector>
@@ -147,7 +148,26 @@ void CFogMusic::OnShutdown()
 
 int64_t CFogMusic::PositionMs() const
 {
-	return CMprisClient::EstimatePositionUs(m_Media, time_get_nanoseconds().count()) / 1000;
+	// A smooth clock: it runs on its own and is only gently pulled towards the player's reports
+	// (every ~200 ms, each a little noisy), so letters never twitch back and forth. Seeks, track
+	// changes and pauses snap right away.
+	const int64_t NowNs = time_get_nanoseconds().count();
+	const double Target = (double)CMprisClient::EstimatePositionUs(m_Media, NowNs);
+	if(m_SmoothNs == 0 || !m_Media.m_Playing)
+	{
+		m_SmoothUs = Target;
+		m_SmoothNs = NowNs;
+		return (int64_t)(Target / 1000.0);
+	}
+	const double Dt = std::clamp((NowNs - m_SmoothNs) / 1e9, 0.0, 0.25);
+	m_SmoothNs = NowNs;
+	m_SmoothUs += Dt * 1e6;
+	const double Error = Target - m_SmoothUs;
+	if(std::abs(Error) > 400000.0)
+		m_SmoothUs = Target; // a seek or a new track
+	else
+		m_SmoothUs += Error * std::min(1.0, Dt * 3.0);
+	return (int64_t)(m_SmoothUs / 1000.0);
 }
 
 int64_t CFogMusic::LyricsTimeMs() const

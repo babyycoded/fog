@@ -4346,3 +4346,6 @@ Valentine's Day
 
 March 8
 == 8 марта
+
+Font of the game
+== Шрифт игры

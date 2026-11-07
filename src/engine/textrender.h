@@ -220,7 +220,11 @@ public:
 	virtual EFontPreset FontPreset() const = 0;
 	// Display fonts: everything in fonts/display. The family is used by EFontPreset::DISPLAY_FONT,
 	// at Weight (100..1000) for variable fonts or the closest weight of a static family.
-	virtual void SetDisplayFont(const char *pFamily, int Weight) = 0;
+	// Exact: ignore the game font (the lyrics keep their own family)
+	virtual void SetDisplayFont(const char *pFamily, int Weight, bool Exact = false) = 0;
+	// Fog: one display family for all game text (empty = the game's own fonts)
+	virtual void SetGlobalFont(const char *pFamily) = 0;
+	virtual const char *GlobalFont() const = 0;
 	virtual std::vector<std::string> DisplayFontFamilies() const = 0;
 	virtual void SetFontLanguageVariant(const char *pLanguageFile) = 0;
 
