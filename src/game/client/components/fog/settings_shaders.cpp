@@ -93,7 +93,7 @@ const std::vector<SFxPreset> &Presets()
 		{"Retro CRT", "Scanlines and a little colour bleed", With({{&V::m_Scanlines, 45}, {&V::m_Chroma, 25}, {&V::m_Vignette, 45}, {&V::m_Bloom, 50}, {&V::m_Saturation, 110}})},
 		{"VHS", "A worn tape", With({{&V::m_Chroma, 50}, {&V::m_Grain, 40}, {&V::m_Fade, 30}, {&V::m_Saturation, 85}, {&V::m_Scanlines, 20}})},
 		{"Glitch", "Split colour and noise", With({{&V::m_Chroma, 90}, {&V::m_Scanlines, 30}, {&V::m_Grain, 20}, {&V::m_Contrast, 120}})},
-		{"Night vision", "Green, grainy, glowing", WithFilter(With({{&V::m_Saturation, 0}, {&V::m_Grain, 35}, {&V::m_Vignette, 60}, {&V::m_Bloom, 60}, {&V::m_Scanlines, 15}}), 0.33f, 0.9f, 0.5f, 90)},
+		{"Night vision", "Green, grainy, glowing", WithFilter(With({{&V::m_Saturation, 0}, {&V::m_Grain, 35}, {&V::m_Vignette, 60}, {&V::m_Bloom, 60}, {&V::m_Scanlines, 15}}), 0.33f, 0.7f, 0.5f, 70)},
 		{"Pixel", "Big pixels, fewer colours", With({{&V::m_Pixelate, 4}, {&V::m_Posterize, 12}})},
 		{"Handheld", "A four-shade pocket console", WithFilter(With({{&V::m_Pixelate, 3}, {&V::m_Posterize, 4}, {&V::m_Saturation, 0}}), 0.28f, 0.5f, 0.45f, 70)},
 		{"Comic", "Flat colour, inked edges", With({{&V::m_Posterize, 6}, {&V::m_Sharpen, 120}, {&V::m_Saturation, 125}})},
@@ -131,6 +131,16 @@ void ApplyFx(const SFxValues &Values)
 }
 
 } // namespace
+
+// console: fog_fx_apply <index> (0 = Clean)
+bool FogApplyFxPreset(int Index)
+{
+	if(Index < 0 || Index >= (int)Presets().size())
+		return false;
+	ApplyFx(Presets()[Index].m_Values);
+	g_Config.m_FogFxPreset = Index;
+	return true;
+}
 
 void CMenus::RenderSettingsShaders(CUIRect MainView)
 {

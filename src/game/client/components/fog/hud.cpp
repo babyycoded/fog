@@ -87,6 +87,11 @@ void FormatDiff(char *pBuf, int Size, float Diff)
 void CHud::OnConsoleInit()
 {
 	Console()->Register("fog_clip", "", CFGFLAG_CLIENT, ConFogClip, this, "Save the last fog_clip_length seconds as a clip (demos/replays)");
+	Console()->Register("fog_fx_apply", "i[preset]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *) {
+		extern bool FogApplyFxPreset(int Index);
+		FogApplyFxPreset(pResult->GetInteger(0));
+	},
+		this, "Apply a live shader preset by number (0 = Clean)");
 	Console()->Register("fog_drop", "r[path]", CFGFLAG_CLIENT, [](IConsole::IResult *pResult, void *pUserData) {
 		static_cast<CHud *>(pUserData)->GameClient()->m_Menus.FogHandleDrop(pResult->GetString(0));
 	},
