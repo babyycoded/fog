@@ -13,6 +13,12 @@
 #include <vector>
 
 class CTeeRenderInfo;
+
+// Full-range custom colours for your own tees. The game sends colours with the lightness
+// clamped (nothing darker than mid grey), so the real colour lives in fog_tee_true_* and the
+// network value is the nearest legal one; it only applies while the two still match.
+bool FogTrueColors(bool Dummy, ColorRGBA &Body, ColorRGBA &Feet);
+void FogApplyTrueColors(CTeeRenderInfo &Info, bool Dummy);
 struct SFogLook;
 
 // Fog tee studio: animated colours and patterns for your own tee (and your dummy).

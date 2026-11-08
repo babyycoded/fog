@@ -4407,3 +4407,6 @@ No favorite servers yet. Open a server in Internet and press the star
 
 Open Internet
 == Открыть «Интернет»
+
+Darker than the game allows: you see this colour, other players see the closest one.
+== Темнее, чем позволяет игра: ты видишь этот цвет, другие игроки — ближайший допустимый

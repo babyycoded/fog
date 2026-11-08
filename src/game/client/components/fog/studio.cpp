@@ -195,6 +195,7 @@ void CMenus::RenderFogStudio(CUIRect Screen)
 				Info.ApplyColors(g_Config.m_ClDummyUseCustomColor, g_Config.m_ClDummyColorBody, g_Config.m_ClDummyColorFeet);
 			else
 				Info.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
+			FogApplyTrueColors(Info, ForDummy);
 			Info.m_Size = Size;
 			Info.m_FogAccessorySlot = ForDummy ? 1 : 0;
 			const char *pFile = Valid ? pName : "default";
@@ -731,6 +732,7 @@ void CMenus::RenderFogStudio(CUIRect Screen)
 			s_vSkinButtons.resize(vSkinList.size() + 64);
 		CTeeRenderInfo Base;
 		Base.ApplyColors(*pUseCustomColor, *pColorBody, *pColorFeet);
+		FogApplyTrueColors(Base, Dummy);
 		int NewSelected = -1;
 		for(size_t i = 0; i < vSkinList.size(); i++)
 		{
@@ -1011,18 +1013,45 @@ void CMenus::RenderFogStudio(CUIRect Screen)
 					SetNeedSendInfo();
 				if(*pUseCustomColor)
 				{
-					CUIRect Colors = Row(Column, 78.0f), Left, Right, Label;
-					Colors.VSplitMid(&Left, &Right, 16.0f);
+					// the full-range picker: the server gets the nearest colour the game allows,
+					// this client draws the real one (black included)
+					int *pTrueOn = Dummy ? &g_Config.m_FogDummyTrueColor : &g_Config.m_FogTeeTrueColor;
+					unsigned *apTrue[] = {Dummy ? &g_Config.m_FogDummyTrueBody : &g_Config.m_FogTeeTrueBody, Dummy ? &g_Config.m_FogDummyTrueFeet : &g_Config.m_FogTeeTrueFeet};
 					unsigned *apColors[] = {pColorBody, pColorFeet};
-					CUIRect *apRects[] = {&Left, &Right};
 					const char *apParts[] = {Localize("Body"), Localize("Feet")};
+					static CButtonContainer s_aResetTrue[2];
+					// the picker popup edits the value later in the frame, so edits are noticed
+					// against what was there last frame
+					static unsigned s_aaLastTrue[NUM_DUMMIES][2];
+					static bool s_aaSeen[NUM_DUMMIES][2] = {};
+					bool TooDark = false;
 					for(int i = 0; i < 2; i++)
 					{
-						apRects[i]->HSplitTop(18.0f, &Label, apRects[i]);
-						FogLabel(Ui(), TextRender(), Label, apParts[i], 12.0f, TEXTALIGN_ML, MIST, "Manrope", 700);
-						if(RenderHslaScrollbars(apRects[i], apColors[i], false, ColorHSLA::DARKEST_LGT))
-							SetNeedSendInfo();
+						const auto Commit = [&]() {
+							*pTrueOn = 1;
+							const unsigned Net = ColorHSLA(*apTrue[i]).Pack(ColorHSLA::DARKEST_LGT, false);
+							if(Net != *apColors[i])
+							{
+								*apColors[i] = Net;
+								SetNeedSendInfo();
+							}
+						};
+						unsigned &Last = s_aaLastTrue[Dummy][i];
+						if(s_aaSeen[Dummy][i] && *apTrue[i] != Last)
+							Commit();
+						// out of sync (changed in the stock settings or the console): start from the game colour
+						else if(!*pTrueOn || ColorHSLA(*apTrue[i]).Pack(ColorHSLA::DARKEST_LGT, false) != *apColors[i])
+							*apTrue[i] = ColorHSLA(*apColors[i]).UnclampLighting(ColorHSLA::DARKEST_LGT).Pack(false);
+						const unsigned Before = *apTrue[i];
+						ColorLine(Column, &s_aResetTrue[i], apParts[i], apTrue[i], ColorHSLA(65408).UnclampLighting(ColorHSLA::DARKEST_LGT).Pack(false));
+						if(*apTrue[i] != Before)
+							Commit();
+						Last = *apTrue[i];
+						s_aaSeen[Dummy][i] = true;
+						TooDark |= ColorHSLA(*apTrue[i]).l < ColorHSLA::DARKEST_LGT;
 					}
+					if(TooDark)
+						Hint(Column, Localize("Darker than the game allows: you see this colour, other players see the closest one."));
 				}
 			}
 			Column.HSplitTop(12.0f, nullptr, &Column);

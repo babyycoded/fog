@@ -106,6 +106,39 @@ unsigned CFogTeeStyle::InvertPackedHsl(unsigned Packed)
 	return color_cast<ColorHSLA>(Rgb).Pack(ColorHSLA::DARKEST_LGT, false);
 }
 
+bool FogTrueColors(bool Dummy, ColorRGBA &Body, ColorRGBA &Feet)
+{
+	// a synced dummy wears your colours; an inverted one keeps its game colours
+	if(Dummy && g_Config.m_FogDummySync == 1)
+		Dummy = false;
+	else if(Dummy && g_Config.m_FogDummySync == 2)
+		return false;
+	const int On = Dummy ? g_Config.m_FogDummyTrueColor : g_Config.m_FogTeeTrueColor;
+	const int UseCustom = Dummy ? g_Config.m_ClDummyUseCustomColor : g_Config.m_ClPlayerUseCustomColor;
+	if(!On || !UseCustom)
+		return false;
+	const unsigned TrueBody = Dummy ? g_Config.m_FogDummyTrueBody : g_Config.m_FogTeeTrueBody;
+	const unsigned TrueFeet = Dummy ? g_Config.m_FogDummyTrueFeet : g_Config.m_FogTeeTrueFeet;
+	const unsigned NetBody = Dummy ? g_Config.m_ClDummyColorBody : g_Config.m_ClPlayerColorBody;
+	const unsigned NetFeet = Dummy ? g_Config.m_ClDummyColorFeet : g_Config.m_ClPlayerColorFeet;
+	// changed somewhere else (stock settings, console): the game colours win
+	if(ColorHSLA(TrueBody).Pack(ColorHSLA::DARKEST_LGT, false) != NetBody || ColorHSLA(TrueFeet).Pack(ColorHSLA::DARKEST_LGT, false) != NetFeet)
+		return false;
+	Body = color_cast<ColorRGBA>(ColorHSLA(TrueBody));
+	Feet = color_cast<ColorRGBA>(ColorHSLA(TrueFeet));
+	return true;
+}
+
+void FogApplyTrueColors(CTeeRenderInfo &Info, bool Dummy)
+{
+	ColorRGBA Body, Feet;
+	if(Info.m_CustomColoredSkin && FogTrueColors(Dummy, Body, Feet))
+	{
+		Info.m_ColorBody = Body;
+		Info.m_ColorFeet = Feet;
+	}
+}
+
 bool CFogTeeStyle::Enabled(int Slot) const
 {
 	if(!g_Config.m_FogTeeStyle)

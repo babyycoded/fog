@@ -229,6 +229,7 @@ void CMenusStart::RenderFogStart(CUIRect MainView)
 		CTeeRenderInfo TeeInfo;
 		TeeInfo.Apply(pContainer && pContainer->Skin() ? pContainer->Skin().get() : GameClient()->m_Skins.Find("default"));
 		TeeInfo.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
+		FogApplyTrueColors(TeeInfo, false);
 		// sharp, upscaled parts instead of the 96 px game textures
 		static CFogHiResTee s_HiRes;
 		CSkin::CSkinTextures HiOriginal, HiColorable;

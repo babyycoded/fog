@@ -2967,6 +2967,10 @@ void CGameClient::CClientData::UpdateSkinInfo()
 		if(SkinDescriptor.m_Flags & CSkinDescriptor::FLAG_SIX)
 		{
 			m_pSkinInfo->TeeRenderInfo().ApplyColors(m_UseCustomColor, m_ColorBody, m_ColorFeet);
+			// your own tees: full-range colours drawn by this client only
+			for(int Dummy = 0; Dummy < NUM_DUMMIES; Dummy++)
+				if(m_ClientId >= 0 && m_ClientId == m_pGameClient->m_aLocalIds[Dummy])
+					FogApplyTrueColors(m_pSkinInfo->TeeRenderInfo(), Dummy == 1);
 		}
 		if(SkinDescriptor.m_Flags & CSkinDescriptor::FLAG_SEVEN)
 		{

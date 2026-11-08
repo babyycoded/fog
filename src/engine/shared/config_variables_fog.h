@@ -142,6 +142,14 @@ MACRO_CONFIG_INT(FogTeeStyle, fog_tee_style, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_S
 MACRO_CONFIG_INT(FogTeeColorMode, fog_tee_color_mode, 1, 0, 5, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee colour: 0 skin/game colours, 1 breathe between two colours, 2 flowing gradient, 3 rainbow, 4 aurora, 5 pulse")
 MACRO_CONFIG_COL(FogTeeColor1, fog_tee_color1, 9985743, CFGFLAG_CLIENT | CFGFLAG_SAVE, "First tee colour")
 MACRO_CONFIG_COL(FogTeeColor2, fog_tee_color2, 16021181, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Second tee colour")
+// full-range custom colours (black included) for your own tees: the server gets the nearest
+// colour the game allows, your client draws the real one
+MACRO_CONFIG_INT(FogTeeTrueColor, fog_tee_true_color, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw your custom colours at full range (darker than the game allows)")
+MACRO_CONFIG_COL(FogTeeTrueBody, fog_tee_true_body, 65408, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Your body colour, full range")
+MACRO_CONFIG_COL(FogTeeTrueFeet, fog_tee_true_feet, 65408, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Your feet colour, full range")
+MACRO_CONFIG_INT(FogDummyTrueColor, fog_dummy_true_color, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw the dummy's custom colours at full range")
+MACRO_CONFIG_COL(FogDummyTrueBody, fog_dummy_true_body, 65408, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy body colour, full range")
+MACRO_CONFIG_COL(FogDummyTrueFeet, fog_dummy_true_feet, 65408, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy feet colour, full range")
 MACRO_CONFIG_INT(FogTeeColorSpeed, fog_tee_color_speed, 100, 0, 500, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speed of the colour animation (percent)")
 MACRO_CONFIG_INT(FogTeeFeetMode, fog_tee_feet_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Feet: 0 follow the body, 1 game feet colour, 2 second colour, 3 inverted body")
 MACRO_CONFIG_INT(FogTeePattern, fog_tee_pattern, 0, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Pattern on the body: 0 none, 1 stripes, 2 dots, 3 waves, 4 checks, 5 zigzag, 6 sparkles, 7 marble, 8 rings, 9 your image")
