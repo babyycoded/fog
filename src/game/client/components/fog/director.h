@@ -26,6 +26,9 @@ public:
 		NAV_SETTINGS,
 		NAV_NEWS,
 		NAV_QUIT,
+		NAV_SETTINGS_FOG, // the Fog entry in the settings sidebar
+		NAV_TAB0, // the nine tabs of the Fog settings page
+		NAV_TAB_LAST = NAV_TAB0 + 8,
 		NUM_NAV
 	};
 	static void PublishNavRect(int Index, vec2 Pos, vec2 Size);
@@ -41,7 +44,8 @@ private:
 	struct SKey
 	{
 		float m_Time; // seconds
-		vec2 m_Ui; // target in UI coordinates
+		vec2 m_Ui; // target in UI coordinates (when m_Nav < 0)
+		int m_Nav = -1; // else the centre of this published row, read live
 		bool m_Click; // press at this key
 	};
 
@@ -61,6 +65,7 @@ private:
 	void Begin();
 	void Stop();
 	void BuildMenuScene();
+	vec2 Resolve(const SKey &Key, vec2 Fallback) const;
 	void WriteLog() const;
 
 	static void ConDirector(IConsole::IResult *pResult, void *pUserData);

@@ -85,25 +85,57 @@ void CFogDirector::Begin()
 	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "fog_director", "scene started");
 }
 
+vec2 CFogDirector::Resolve(const SKey &Key, vec2 Fallback) const
+{
+	if(Key.m_Nav < 0)
+		return Key.m_Ui;
+	if(!g_aNavValid[Key.m_Nav])
+		return Fallback;
+	return g_aNavPos[Key.m_Nav] + g_aNavSize[Key.m_Nav] * vec2(0.55f, 0.5f);
+}
+
 void CFogDirector::BuildMenuScene()
 {
-	// Start near the middle of the scene, drift to Play, then run down every rail row and stop
-	// on Settings, where it clicks. Rows come from the start screen, so this follows its layout.
+	// Menu scene: run down the rail, open Settings, open the Fog page, then tour its tabs.
+	// The five headline tabs get a longer stop; the rest flash by. Rows are read live.
 	const CUIRect *pScreen = Ui()->Screen();
-	const auto Center = [&](int Index) {
-		return g_aNavValid[Index] ? g_aNavPos[Index] + g_aNavSize[Index] * vec2(0.55f, 0.5f) : vec2(pScreen->w * 0.1f, pScreen->h * 0.3f);
+	const auto Nav = [](float Time, int Index, bool Click) {
+		SKey Key;
+		Key.m_Time = Time;
+		Key.m_Ui = vec2(0, 0);
+		Key.m_Nav = Index;
+		Key.m_Click = Click;
+		return Key;
 	};
-	m_vKeys.push_back({0.0f, vec2(pScreen->w * 0.62f, pScreen->h * 0.55f), false});
-	m_vKeys.push_back({1.0f, Center(NAV_PLAY), false});
+	SKey Start;
+	Start.m_Time = 0.0f;
+	Start.m_Ui = vec2(pScreen->w * 0.62f, pScreen->h * 0.55f);
+	m_vKeys.push_back(Start);
+	m_vKeys.push_back(Nav(1.0f, NAV_PLAY, false));
 	float T = 1.0f;
 	for(int Index : {NAV_DEMOS, NAV_EDITOR, NAV_SERVER, NAV_NEWS, NAV_QUIT})
 	{
 		T += 0.28f;
-		m_vKeys.push_back({T, Center(Index), false});
+		m_vKeys.push_back(Nav(T, Index, false));
 	}
 	T += 0.5f;
-	m_vKeys.push_back({T, Center(NAV_SETTINGS), false});
-	m_vKeys.push_back({T + 0.45f, Center(NAV_SETTINGS), true});
+	m_vKeys.push_back(Nav(T, NAV_SETTINGS, false));
+	T += 0.45f;
+	m_vKeys.push_back(Nav(T, NAV_SETTINGS, true)); // opens Settings
+	T += 1.1f;
+	m_vKeys.push_back(Nav(T, NAV_SETTINGS_FOG, false));
+	T += 0.4f;
+	m_vKeys.push_back(Nav(T, NAV_SETTINGS_FOG, true)); // opens the Fog page
+	T += 0.9f;
+	const bool aHeadline[9] = {true, true, false, false, true, true, false, false, true};
+	for(int Tab = 0; Tab < 9; Tab++)
+	{
+		m_vKeys.push_back(Nav(T, NAV_TAB0 + Tab, false));
+		T += 0.25f;
+		m_vKeys.push_back(Nav(T, NAV_TAB0 + Tab, true));
+		T += aHeadline[Tab] ? 1.6f : 0.45f;
+	}
+	m_vKeys.push_back(Nav(T, NAV_TAB0 + 8, false));
 }
 
 void CFogDirector::Stop()
@@ -151,18 +183,22 @@ void CFogDirector::OnRender()
 	// RenderFrameTime is the fixed step while start_video records, so the timeline is exact.
 	m_Time += Client()->RenderFrameTime();
 
-	// find the segment we are in and ease between its two keys
-	vec2 Target = m_vKeys.front().m_Ui;
+	// find the segment we are in and ease between its two keys (rows are resolved live)
+	vec2 Target = Resolve(m_vKeys.front(), m_Pos);
+	vec2 Prev = Target;
 	for(size_t i = 0; i + 1 < m_vKeys.size(); i++)
 	{
 		const SKey &A = m_vKeys[i], &B = m_vKeys[i + 1];
+		const vec2 PosA = Resolve(A, Prev);
+		const vec2 PosB = Resolve(B, PosA);
+		Prev = PosB;
 		if(m_Time >= A.m_Time && m_Time < B.m_Time)
 		{
-			Target = mix(A.m_Ui, B.m_Ui, SmootherStep((m_Time - A.m_Time) / (B.m_Time - A.m_Time)));
+			Target = mix(PosA, PosB, SmootherStep((m_Time - A.m_Time) / (B.m_Time - A.m_Time)));
 			break;
 		}
 		if(m_Time >= B.m_Time)
-			Target = B.m_Ui;
+			Target = PosB;
 	}
 	m_Pos = Target;
 

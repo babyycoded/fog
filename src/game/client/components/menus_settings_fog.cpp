@@ -2,6 +2,8 @@
 
 #include <base/str.h>
 
+#include "fog/director.h"
+
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
 
@@ -640,6 +642,7 @@ void CMenus::RenderSettingsFog(CUIRect MainView)
 	for(int i = 0; i < (int)std::size(apTabs); i++)
 	{
 		const CUIRect R = {Tabs.x + 2.0f + i * w, Tabs.y + 2.0f, w, Tabs.h - 4.0f};
+		CFogDirector::PublishNavRect(CFogDirector::NAV_TAB0 + i, vec2(R.x, R.y), vec2(R.w, R.h));
 		if(Ui()->DoButtonLogic(&s_aTabs[i], 0, &R, BUTTONFLAG_LEFT))
 			m_FogVisualsTab = i;
 		const bool Active = m_FogVisualsTab == i, Hot = Ui()->HotItem() == &s_aTabs[i];

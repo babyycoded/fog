@@ -2,6 +2,7 @@
 // settings, news). It replaces the stock top tab bar while the Fog interface is enabled.
 
 #include "brand.h"
+#include "director.h"
 #include "glass.h"
 
 #include <base/dbg.h>
@@ -284,6 +285,8 @@ void CMenus::RenderFogSettingsNav(CUIRect &MainView, CUIRect &RestartBar, bool N
 			Column.HSplitTop(ItemH, &Row, &Column);
 			Column.HSplitTop(Gap, nullptr, &Column);
 			const bool Active = g_Config.m_UiSettingsPage == Page;
+			if(Page == SETTINGS_FOG)
+				CFogDirector::PublishNavRect(CFogDirector::NAV_SETTINGS_FOG, vec2(Row.x, Row.y), vec2(Row.w, Row.h));
 			if(Ui()->DoButtonLogic(&s_aButtons[Page], Active, &Row, BUTTONFLAG_LEFT))
 				g_Config.m_UiSettingsPage = Page;
 			const bool Hot = Ui()->HotItem() == &s_aButtons[Page];
