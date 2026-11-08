@@ -82,6 +82,12 @@ void CFogDirector::Begin()
 	}
 	m_Pos = Ui()->MousePos();
 	m_Active = true;
+	if(g_Config.m_FogCaptureRecord)
+	{
+		Storage()->CreateFolder("fog", IStorage::TYPE_SAVE);
+		Storage()->CreateFolder("fog/capture", IStorage::TYPE_SAVE);
+		g_Config.m_FogCaptureActive = 1; // the client now steps time by 1/fps and saves every frame
+	}
 	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "fog_director", "scene started");
 }
 
@@ -144,6 +150,7 @@ void CFogDirector::Stop()
 	if(!m_Active)
 		return;
 	m_Active = false;
+	g_Config.m_FogCaptureActive = 0;
 	Ui()->FogScriptMouse(false, vec2(0, 0), 0);
 	WriteLog();
 }

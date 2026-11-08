@@ -223,3 +223,8 @@ MACRO_CONFIG_INT(FogRimLight, fog_rim_light, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_S
 MACRO_CONFIG_INT(FogWallShadows, fog_wall_shadows, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tees cast soft shadows on nearby walls and ceilings")
 MACRO_CONFIG_INT(FogDof, fog_dof, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Depth of field: the far background layers are softly out of focus")
 MACRO_CONFIG_INT(FogDofStrength, fog_dof_strength, 100, 10, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Background blur (percent)")
+
+// Trailer capture (dev): the director switches the frame capture on while a scene runs
+MACRO_CONFIG_INT(FogCaptureRecord, fog_capture_record, 0, 0, 1, CFGFLAG_CLIENT, "Dev: save every frame of a fog_director scene as a PNG in fog/capture, with a fixed time step")
+MACRO_CONFIG_INT(FogCaptureFps, fog_capture_fps, 30, 10, 120, CFGFLAG_CLIENT, "Dev: frame rate of the trailer capture")
+MACRO_CONFIG_INT(FogCaptureActive, fog_capture_active, 0, 0, 1, CFGFLAG_CLIENT, "Dev: set by the director while it is capturing")

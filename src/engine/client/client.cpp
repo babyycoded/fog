@@ -3463,6 +3463,8 @@ void CClient::Run()
 			{
 				// update frametime
 				m_RenderFrameTime = (Now - m_LastRenderTime) / (float)time_freq();
+				if(g_Config.m_FogCaptureActive)
+					m_RenderFrameTime = 1.0f / g_Config.m_FogCaptureFps; // trailer capture: fixed time step
 				m_FpsGraph.Add(1.0f / m_RenderFrameTime);
 
 				if(m_BenchmarkFile)
@@ -3483,6 +3485,18 @@ void CClient::Run()
 				if(GfxRefreshRate)
 					NextRenderTime = std::max(NextRenderTime + time_freq() / GfxRefreshRate, Now);
 				m_LastRenderTime = Now;
+
+				{
+					static int s_CaptureFrame = 0;
+					if(g_Config.m_FogCaptureActive)
+					{
+						char aName[64];
+						str_format(aName, sizeof(aName), "fog/capture/f%05d.png", s_CaptureFrame++);
+						m_pGraphics->TakeCustomScreenshot(aName);
+					}
+					else
+						s_CaptureFrame = 0;
+				}
 
 				Render();
 				m_pGraphics->Swap();

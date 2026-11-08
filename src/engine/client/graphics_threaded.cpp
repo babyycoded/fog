@@ -708,7 +708,7 @@ void CGraphics_Threaded::ScreenshotDirect(bool *pSwapped)
 	if(!m_DoScreenshot)
 		return;
 	m_DoScreenshot = false;
-	if(!WindowActive())
+	if(!WindowActive() && !g_Config.m_FogCaptureActive) // the trailer capture runs on an unfocused hidden output
 		return;
 
 	CImageInfo Image;
