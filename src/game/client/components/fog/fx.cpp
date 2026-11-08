@@ -587,9 +587,21 @@ void CFogFx::Update(float Dt)
 		p.m_Life += Dt;
 		p.m_Vel.y += p.m_Gravity * Dt;
 		p.m_Vel *= std::max(0.0f, 1.0f - p.m_Drag * Dt);
-		if(p.m_Type == P_CONFETTI)
+		const bool Lands = p.m_Type == P_CONFETTI || p.m_Type == P_DROP;
+		const bool Landed = Lands && p.m_Gravity == 0.0f && p.m_Vel == vec2(0.0f, 0.0f);
+		if(p.m_Type == P_CONFETTI && !Landed)
 			p.m_Vel.x += std::sin(p.m_Life * 6.0f + p.m_Rot) * 120.0f * Dt;
-		p.m_Pos += p.m_Vel * Dt;
+		const vec2 Next = p.m_Pos + p.m_Vel * Dt;
+		if(Lands && !Landed && p.m_Vel.y > 0.0f && SolidInMap(Collision(), Next) && !SolidInMap(Collision(), p.m_Pos))
+		{
+			// confetti and drops come to rest on the ground and fade there instead of sinking in
+			p.m_Vel = vec2(0.0f, 0.0f);
+			p.m_Gravity = 0.0f;
+			p.m_RotVel = 0.0f;
+			p.m_MaxLife = std::min(p.m_MaxLife, p.m_Life + 1.4f);
+		}
+		else
+			p.m_Pos = Next;
 		p.m_Rot += p.m_RotVel * Dt;
 	}
 	S.m_vParticles.erase(std::remove_if(S.m_vParticles.begin(), S.m_vParticles.end(), [](const SParticle &p) { return p.m_Life >= p.m_MaxLife; }), S.m_vParticles.end());
