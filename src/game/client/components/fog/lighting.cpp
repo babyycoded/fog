@@ -22,6 +22,46 @@ namespace {
 
 constexpr float TILE = 32.0f;
 
+// a pickup from either snapshot form (DDNet servers send CNetObj_DDNetPickup to DDNet clients)
+struct SPickup
+{
+	vec2 m_Pos;
+	int m_Type;
+};
+bool ReadPickup(const IClient::CSnapItem &Item, SPickup &Out)
+{
+	if(Item.m_Type == NETOBJTYPE_PICKUP)
+	{
+		const CNetObj_Pickup *p = (const CNetObj_Pickup *)Item.m_pData;
+		Out = {vec2(p->m_X, p->m_Y), p->m_Type};
+		return true;
+	}
+	if(Item.m_Type == NETOBJTYPE_DDNETPICKUP)
+	{
+		const CNetObj_DDNetPickup *p = (const CNetObj_DDNetPickup *)Item.m_pData;
+		Out = {vec2(p->m_X, p->m_Y), p->m_Type};
+		return true;
+	}
+	return false;
+}
+
+// health red, armour amber, ninja violet, freeze ice, weapons pale
+ColorRGBA PickupTint(int Type)
+{
+	switch(Type)
+	{
+	case POWERUP_HEALTH: return ColorRGBA(1.0f, 0.45f, 0.45f, 1.0f);
+	case POWERUP_ARMOR:
+	case POWERUP_ARMOR_SHOTGUN:
+	case POWERUP_ARMOR_GRENADE:
+	case POWERUP_ARMOR_NINJA:
+	case POWERUP_ARMOR_LASER: return ColorRGBA(1.0f, 0.85f, 0.4f, 1.0f);
+	case POWERUP_NINJA: return ColorRGBA(0.75f, 0.5f, 1.0f, 1.0f);
+	case POWERUP_FREEZE: return ColorRGBA(0.55f, 0.8f, 1.0f, 1.0f);
+	default: return ColorRGBA(0.9f, 0.9f, 1.0f, 1.0f);
+	}
+}
+
 // CCollision clamps outside coordinates to the solid border, so outside the map is air here
 bool Solid(const CCollision *pCollision, float x, float y)
 {
@@ -225,19 +265,12 @@ void CFogLighting::RenderLights()
 			To = vec2(p->m_ToX, p->m_ToY);
 			Laser = true;
 		}
-		else if(Item.m_Type == NETOBJTYPE_PICKUP)
+		else if(SPickup Pk; ReadPickup(Item, Pk))
 		{
-			const CNetObj_Pickup *p = (const CNetObj_Pickup *)Item.m_pData;
-			const vec2 Pos(p->m_X, p->m_Y);
-			ColorRGBA c(0.9f, 0.9f, 1.0f, 0.7f);
-			if(p->m_Type == POWERUP_HEALTH)
-				c = ColorRGBA(1.0f, 0.45f, 0.45f, 0.8f);
-			else if(p->m_Type == POWERUP_ARMOR)
-				c = ColorRGBA(1.0f, 0.85f, 0.4f, 0.8f);
-			else if(p->m_Type == POWERUP_NINJA)
-				c = ColorRGBA(0.75f, 0.5f, 1.0f, 0.8f);
-			if(InView(Pos, 140.0f))
-				vLights.push_back({Pos, 120.0f * RadiusScale, c});
+			ColorRGBA c = PickupTint(Pk.m_Type);
+			c.a = Pk.m_Type == POWERUP_WEAPON ? 0.7f : 0.8f;
+			if(InView(Pk.m_Pos, 140.0f))
+				vLights.push_back({Pk.m_Pos, 120.0f * RadiusScale, c});
 		}
 		if(Laser)
 		{
@@ -352,6 +385,12 @@ void CFogLighting::RenderFreezeShimmer()
 	const float Now = Client()->GlobalTime();
 	const int x0 = std::max(0, (int)std::floor(Screen.m_TopLeft.x / TILE)), x1 = std::min(pCol->GetWidth() - 1, (int)std::ceil(Screen.m_BottomRight.x / TILE));
 	const int y0 = std::max(0, (int)std::floor(Screen.m_TopLeft.y / TILE)), y1 = std::min(pCol->GetHeight() - 1, (int)std::ceil(Screen.m_BottomRight.y / TILE));
+	struct SSurface
+	{
+		float m_X, m_Y, m_Seed;
+		bool m_Freeze;
+	};
+	std::vector<SSurface> vSurface;
 	Graphics()->BlendAdditive();
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
@@ -364,27 +403,53 @@ void CFogLighting::RenderFreezeShimmer()
 			const bool Death = Game == TILE_DEATH || Front == TILE_DEATH;
 			if(!Freeze && !Death)
 				continue;
-			const float X = tx * TILE, Y = ty * TILE;
-			const float Seed = tx * 1.37f + ty * 2.11f;
-			const ColorRGBA Tint = Freeze ? ColorRGBA(0.55f, 0.8f, 1.0f, 1.0f) : ColorRGBA(1.0f, 0.45f, 0.4f, 1.0f);
-			// a slow breathing glow
-			const float Breath = 0.035f + 0.025f * std::sin(Now * 1.6f + Seed);
-			Graphics()->SetColor(Tint.r * Breath, Tint.g * Breath, Tint.b * Breath, 1.0f);
-			IGraphics::CQuadItem Glow(X, Y, TILE, TILE);
-			Graphics()->QuadsDrawTL(&Glow, 1);
-			// heat/frost haze: thin wavering bands drifting up through the tile
-			for(int b = 0; b < 2; b++)
-			{
-				const float Life = std::fmod(Now * 0.5f + Seed * 0.3f + b * 0.5f, 1.0f);
-				const float Wave = std::sin(Now * 3.0f + Seed + b * 2.0f) * 4.0f;
-				const float By = Y + TILE - Life * TILE * 1.4f;
-				const float k = 0.05f * std::sin(Life * pi);
-				const ColorRGBA c(Tint.r * k, Tint.g * k, Tint.b * k, 1.0f), z(0, 0, 0, 1);
-				Graphics()->SetColor4(z, z, c, c);
-				const IGraphics::CFreeformItem Band(X + 3.0f + Wave, By - 5.0f, X + TILE - 3.0f + Wave * 0.6f, By - 5.0f, X + 3.0f - Wave * 0.4f, By, X + TILE - 3.0f + Wave, By);
-				Graphics()->QuadsDrawFreeform(&Band, 1);
-			}
+			// only the surface breathes: a freeze pool shows as haze over its open top, not as a
+			// lit block (a flat lift over the whole area reads as nothing)
+			if(ty == 0)
+				continue;
+			const int Above = Index - pCol->GetWidth();
+			const int AGame = pCol->GetTileIndex(Above), AFront = pCol->GetFrontTileIndex(Above);
+			const bool AboveSame = Freeze ? (AGame == TILE_FREEZE || AFront == TILE_FREEZE || AGame == TILE_DFREEZE || AFront == TILE_DFREEZE) : (AGame == TILE_DEATH || AFront == TILE_DEATH);
+			if(AboveSame || Solid(pCol, tx * TILE + TILE * 0.5f, ty * TILE - TILE * 0.5f))
+				continue;
+			vSurface.push_back({tx * TILE, ty * TILE, tx * 1.37f + ty * 2.11f, Freeze});
 		}
+
+	const auto TintOf = [](bool Freeze, float k) {
+		return Freeze ? ColorRGBA(0.55f * k, 0.8f * k, 1.0f * k, 1.0f) : ColorRGBA(1.0f * k, 0.45f * k, 0.4f * k, 1.0f);
+	};
+	// a low haze hugging the surface, wavering along it
+	for(const SSurface &S : vSurface)
+	{
+		const float Breath = 0.75f + 0.25f * std::sin(Now * 1.3f + S.m_Seed);
+		const float h0 = 16.0f + 5.0f * std::sin(Now * 1.1f + S.m_Seed);
+		const float h1 = 16.0f + 5.0f * std::sin(Now * 1.1f + S.m_Seed + 1.37f);
+		const ColorRGBA Base = TintOf(S.m_Freeze, 0.13f * Breath), Top = TintOf(S.m_Freeze, 0.0f);
+		Graphics()->SetColor4(Top, Top, Base, Base);
+		const IGraphics::CFreeformItem Haze(S.m_X, S.m_Y - h0, S.m_X + TILE, S.m_Y - h1, S.m_X, S.m_Y + 2.0f, S.m_X + TILE, S.m_Y + 2.0f);
+		Graphics()->QuadsDrawFreeform(&Haze, 1);
+	}
+	Graphics()->QuadsEnd();
+
+	// frost motes (embers over death) drifting up from the surface and fading
+	Graphics()->TextureSet(m_Soft);
+	Graphics()->QuadsBegin();
+	for(const SSurface &S : vSurface)
+	{
+		for(int m = 0; m < 2; m++)
+		{
+			const float Rate = 0.35f + 0.1f * std::fmod(S.m_Seed * 7.3f + m, 1.0f);
+			const float Life = std::fmod(Now * Rate + S.m_Seed * 0.61f + m * 0.5f, 1.0f);
+			const float Fade = std::sin(Life * pi);
+			const float x = S.m_X + TILE * std::fmod(S.m_Seed * 3.7f + m * 0.43f, 1.0f) + std::sin(Now * 2.0f + S.m_Seed + m) * 5.0f;
+			const float y = S.m_Y - Life * 46.0f;
+			const float Size = 5.0f + 4.0f * Fade;
+			const ColorRGBA c = TintOf(S.m_Freeze, 0.35f * Fade * Fade);
+			Graphics()->SetColor(c.r, c.g, c.b, 1.0f);
+			IGraphics::CQuadItem Mote(x, y, Size, Size);
+			Graphics()->QuadsDraw(&Mote, 1);
+		}
+	}
 	Graphics()->QuadsEnd();
 	Graphics()->BlendNormal();
 }
@@ -428,19 +493,13 @@ void CFogLighting::RenderSourceGlow()
 			IGraphics::CQuadItem Tip(To.x, To.y, 46.0f, 46.0f);
 			Graphics()->QuadsDraw(&Tip, 1);
 		}
-		else if(Item.m_Type == NETOBJTYPE_PICKUP)
+		else if(SPickup Pk; ReadPickup(Item, Pk))
 		{
-			const CNetObj_Pickup *p = (const CNetObj_Pickup *)Item.m_pData;
-			ColorRGBA c(0.8f, 0.85f, 1.0f, 0.28f);
-			if(p->m_Type == POWERUP_HEALTH)
-				c = ColorRGBA(1.0f, 0.4f, 0.4f, 0.32f);
-			else if(p->m_Type == POWERUP_ARMOR)
-				c = ColorRGBA(1.0f, 0.8f, 0.35f, 0.32f);
-			else if(p->m_Type == POWERUP_NINJA)
-				c = ColorRGBA(0.7f, 0.45f, 1.0f, 0.32f);
+			const ColorRGBA c = PickupTint(Pk.m_Type);
+			const float a = Pk.m_Type == POWERUP_WEAPON ? 0.28f : 0.32f;
 			const float Pulse = 0.8f + 0.2f * std::sin(Now * 2.5f + Item.m_Id);
-			Graphics()->SetColor(c.r, c.g, c.b, c.a * Pulse);
-			IGraphics::CQuadItem Halo(p->m_X, p->m_Y, 70.0f, 70.0f);
+			Graphics()->SetColor(c.r, c.g, c.b, a * Pulse);
+			IGraphics::CQuadItem Halo(Pk.m_Pos.x, Pk.m_Pos.y, 70.0f, 70.0f);
 			Graphics()->QuadsDraw(&Halo, 1);
 		}
 	}

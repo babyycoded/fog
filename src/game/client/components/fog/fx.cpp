@@ -688,9 +688,9 @@ void CFogFx::Update(float Dt)
 				b.m_Pos = vec2(Center.x + (FromLeft ? -1.0f : 1.0f) * (HalfW + 60.0f), Center.y - RandRange(HalfH * 0.1f, HalfH * 0.45f));
 				b.m_Vel = vec2((FromLeft ? 1.0f : -1.0f) * RandRange(160.0f, 280.0f), RandRange(-20.0f, 20.0f));
 				b.m_MaxLife = (HalfW * 2.0f + 120.0f) / std::abs(b.m_Vel.x);
-				b.m_Size = RandRange(18.0f, 34.0f);
+				b.m_Size = RandRange(26.0f, 44.0f);
 				b.m_Color = ColorRGBA(0.07f, 0.06f, 0.09f, 0.9f);
-				S.m_NextHolidaySpawn = Now + RandRange(1.5f, 4.5f);
+				S.m_NextHolidaySpawn = Now + RandRange(0.9f, 2.8f);
 			}
 			else if(Holiday == HOLIDAY_VALENTINE || Holiday == HOLIDAY_MARCH8)
 			{
@@ -698,11 +698,11 @@ void CFogFx::Update(float Dt)
 				b.m_Pos = vec2(Center.x + RandRange(-HalfW, HalfW), Center.y - HalfH - 30.0f);
 				b.m_Vel = vec2(RandRange(-20.0f, 20.0f), RandRange(35.0f, 70.0f));
 				b.m_MaxLife = (HalfH * 2.0f + 60.0f) / b.m_Vel.y;
-				b.m_Size = RandRange(8.0f, 15.0f);
+				b.m_Size = RandRange(12.0f, 22.0f);
 				b.m_Rot = RandRange(-0.6f, 0.6f);
 				b.m_RotVel = RandRange(-0.8f, 0.8f);
 				b.m_Color = Holiday == HOLIDAY_VALENTINE ? ColorRGBA(0.95f, 0.55f, 0.66f, 0.75f) : (Rand01() < 0.5f ? ColorRGBA(1.0f, 0.86f, 0.9f, 0.8f) : ColorRGBA(1.0f, 0.95f, 0.75f, 0.8f));
-				S.m_NextHolidaySpawn = Now + RandRange(0.2f, 0.55f);
+				S.m_NextHolidaySpawn = Now + RandRange(0.15f, 0.4f);
 			}
 			else
 				S.m_NextHolidaySpawn = Now + 1.0f;
@@ -1173,6 +1173,59 @@ void CFogFx::RenderFront()
 				Graphics()->SetColor(c.r, c.g, c.b, 0.9f * Twinkle);
 				IGraphics::CQuadItem Bulb(x, y, 1.6f, 1.6f);
 				Graphics()->QuadsDraw(&Bulb, 1);
+			}
+			Graphics()->QuadsEnd();
+			Graphics()->BlendNormal();
+			Graphics()->MapScreen(Screen);
+		}
+		// each holiday keeps one thing on screen that says which one it is, like the garland:
+		// a pale moon for Halloween, slow rose or mimosa bokeh along the edges for the others
+		if(Holiday == HOLIDAY_HALLOWEEN || Holiday == HOLIDAY_VALENTINE || Holiday == HOLIDAY_MARCH8)
+		{
+			Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, 100.0f * Graphics()->ScreenAspect(), 100.0f));
+			const float W = 100.0f * Graphics()->ScreenAspect();
+			Graphics()->TextureSet(S.m_Soft);
+			Graphics()->BlendAdditive();
+			Graphics()->QuadsBegin();
+			if(Holiday == HOLIDAY_HALLOWEEN)
+			{
+				const vec2 Moon(W * 0.78f, 15.0f); // between the server message and the music widget
+				const float Breath = 0.9f + 0.1f * std::sin(Now * 0.4f);
+				Graphics()->SetColor(0.75f, 0.72f, 0.9f, 0.10f * Breath);
+				IGraphics::CQuadItem Halo(Moon.x, Moon.y, 34.0f, 34.0f);
+				Graphics()->QuadsDraw(&Halo, 1);
+				Graphics()->SetColor(0.85f, 0.83f, 0.95f, 0.18f * Breath);
+				IGraphics::CQuadItem Rim(Moon.x, Moon.y, 13.0f, 13.0f);
+				Graphics()->QuadsDraw(&Rim, 1);
+				for(int k = 0; k < 2; k++)
+				{
+					Graphics()->SetColor(0.92f, 0.9f, 1.0f, 0.42f);
+					IGraphics::CQuadItem Disk(Moon.x, Moon.y, 8.0f, 8.0f);
+					Graphics()->QuadsDraw(&Disk, 1);
+				}
+			}
+			else
+			{
+				const bool Rose = Holiday == HOLIDAY_VALENTINE;
+				for(int k = 0; k < 9; k++)
+				{
+					// spread along the four edges, drifting slowly, never over the middle
+					const float Along = std::fmod(k * 0.318f + Now * 0.006f * (1.0f + (k % 3) * 0.4f), 1.0f);
+					vec2 At;
+					switch(k % 4)
+					{
+					case 0: At = vec2(Along * W, 4.0f + 3.0f * std::sin(Now * 0.3f + k)); break;
+					case 1: At = vec2(Along * W, 96.0f + 3.0f * std::sin(Now * 0.3f + k)); break;
+					case 2: At = vec2(4.0f + 3.0f * std::sin(Now * 0.3f + k), Along * 100.0f); break;
+					default: At = vec2(W - 4.0f - 3.0f * std::sin(Now * 0.3f + k), Along * 100.0f); break;
+					}
+					const float Size = 14.0f + 10.0f * std::fmod(k * 0.537f, 1.0f);
+					const float a = 0.05f + 0.03f * std::sin(Now * 0.7f + k * 1.9f);
+					const ColorRGBA c = Rose ? (k % 2 ? ColorRGBA(1.0f, 0.55f, 0.66f, 1) : ColorRGBA(0.95f, 0.7f, 0.8f, 1)) : (k % 2 ? ColorRGBA(1.0f, 0.86f, 0.45f, 1) : ColorRGBA(1.0f, 0.8f, 0.85f, 1));
+					Graphics()->SetColor(c.r, c.g, c.b, a);
+					IGraphics::CQuadItem Bokeh(At.x, At.y, Size, Size);
+					Graphics()->QuadsDraw(&Bokeh, 1);
+				}
 			}
 			Graphics()->QuadsEnd();
 			Graphics()->BlendNormal();
