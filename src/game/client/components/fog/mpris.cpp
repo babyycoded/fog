@@ -234,6 +234,20 @@ void ReadMetadata(DBusMessageIter *pDict, SMediaState &State)
 	}
 }
 
+// A browser tab playing a video (a series, a stream) shows up as a player too, with the tab title
+// and no artist. Music sites in the browser (YouTube Music, Spotify web, SoundCloud) do send an
+// artist, so only artist-less browser media is left out.
+bool IsBrowserVideo(const std::string &BusName, const SMediaState &State)
+{
+	static const char *const s_apBrowsers[] = {"brave", "chromium", "chrome", "firefox", "librewolf", "zen", "floorp", "waterfox", "vivaldi", "opera", "edge", "yandex", "epiphany", "qutebrowser", "falkon", "plasma-browser-integration"};
+	const char *pName = BusName.c_str() + str_length(MPRIS_PREFIX);
+	bool Browser = false;
+	for(const char *pBrowser : s_apBrowsers)
+		if(str_find_nocase(pName, pBrowser))
+			Browser = true;
+	return Browser && State.m_Artist.empty();
+}
+
 bool ReadPlayer(DBusConnection *pConn, const std::string &BusName, SMediaState &State)
 {
 	SDBusMessage Msg(dbus_message_new_method_call(BusName.c_str(), MPRIS_PATH, "org.freedesktop.DBus.Properties", "GetAll"));
@@ -343,6 +357,9 @@ void CMprisClient::Run()
 		{
 			SMediaState Candidate;
 			if(!ReadPlayer(pConn, Name, Candidate))
+				continue;
+			const bool IsPreferred = !Preferred.empty() && str_find_nocase(Name.c_str(), Preferred.c_str());
+			if(!IsPreferred && IsBrowserVideo(Name, Candidate))
 				continue;
 			int Score = Candidate.m_Playing ? 1 : 0;
 			if(!Preferred.empty() && str_find_nocase(Name.c_str(), Preferred.c_str()))
