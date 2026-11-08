@@ -45,6 +45,7 @@ struct SLight
 	vec2 m_Pos;
 	float m_Radius;
 	ColorRGBA m_Color;
+	float m_Inner = 0.0f; // no light inside this (a tee is not lit by its own light)
 };
 
 // the direction the light comes from (soft, from the upper left): rim lights and shadows agree
@@ -152,10 +153,17 @@ void CFogLighting::RenderGodRays()
 		const float Flicker = 0.55f + 0.45f * std::sin(Now * 0.4f + k * 2.3f);
 		const float Width = (22.0f + 26.0f * std::fmod(k * 0.618f, 1.0f)) * (0.8f + 0.2f * Flicker);
 		const vec2 Side(-Dir.y, Dir.x), End = Start + Dir * Len;
-		const ColorRGBA Top(1.0f, 0.94f, 0.82f, 0.07f * s * Flicker), Bottom(1.0f, 0.94f, 0.82f, 0.0f);
-		Graphics()->SetColor4(Top, Top, Bottom, Bottom);
-		const IGraphics::CFreeformItem Shaft(Start - Side * Width * 0.5f, Start + Side * Width * 0.5f, End - Side * Width * 0.9f, End + Side * Width * 0.9f);
-		Graphics()->QuadsDrawFreeform(&Shaft, 1);
+		// bright along the middle, fading to nothing at both sides and towards the end
+		const ColorRGBA Core(1.0f, 0.94f, 0.82f, 0.08f * s * Flicker), Edge(1.0f, 0.94f, 0.82f, 0.0f);
+		const vec2 TopL = Start - Side * Width * 0.5f, TopR = Start + Side * Width * 0.5f;
+		const vec2 EndL = End - Side * Width * 0.9f, EndR = End + Side * Width * 0.9f;
+		const vec2 TopM = (TopL + TopR) * 0.5f, EndM = (EndL + EndR) * 0.5f;
+		Graphics()->SetColor4(Edge, Core, Edge, Edge);
+		const IGraphics::CFreeformItem Left(TopL, TopM, EndL, EndM);
+		Graphics()->QuadsDrawFreeform(&Left, 1);
+		Graphics()->SetColor4(Core, Edge, Edge, Edge);
+		const IGraphics::CFreeformItem Right(TopM, TopR, EndM, EndR);
+		Graphics()->QuadsDrawFreeform(&Right, 1);
 	}
 	Graphics()->QuadsEnd();
 	Graphics()->BlendNormal();
@@ -170,7 +178,7 @@ void CFogLighting::RenderRimLight()
 	{
 		if(!GameClient()->m_Snap.m_aCharacters[i].m_Active)
 			continue;
-		GameClient()->m_FogAccessories.DrawPlayerSilhouette(i, GameClient()->m_aClients[i].m_RenderPos, 64.0f, Shift, ColorRGBA(0.85f, 0.9f, 1.0f, 0.55f));
+		GameClient()->m_FogAccessories.DrawPlayerSilhouette(i, GameClient()->m_aClients[i].m_RenderPos, 64.0f, Shift, ColorRGBA(0.85f, 0.9f, 1.0f, 0.32f));
 	}
 	Graphics()->BlendNormal();
 }
@@ -195,7 +203,7 @@ void CFogLighting::RenderLights()
 		const vec2 p = GameClient()->m_aClients[i].m_RenderPos;
 		const float r = (i == Local ? 300.0f : 220.0f) * RadiusScale;
 		if(InView(p, r) && vLights.size() < 24)
-			vLights.push_back({p, r, i == Local ? ColorRGBA(0.85f, 0.9f, 1.0f, 1.0f) : ColorRGBA(0.75f, 0.8f, 0.92f, 0.8f)});
+			vLights.push_back({p, r, i == Local ? ColorRGBA(0.85f, 0.9f, 1.0f, 1.0f) : ColorRGBA(0.75f, 0.8f, 0.92f, 0.8f), 17.0f});
 	}
 	const int NumItems = Client()->SnapNumItems(IClient::SNAP_CURRENT);
 	for(int i = 0; i < NumItems && vLights.size() < 48; i++)
@@ -266,7 +274,7 @@ void CFogLighting::RenderLights()
 			while(t < Light.m_Radius && !Solid(pCol, Light.m_Pos.x + d.x * t, Light.m_Pos.y + d.y * t))
 				t += 6.0f;
 			// light a few units into the wall face so edges catch the light
-			aDist[r] = std::min(t + 6.0f, Light.m_Radius);
+			aDist[r] = std::min(t + 3.0f, Light.m_Radius);
 		}
 		const float I = Strength * Light.m_Color.a;
 		const auto Fall = [&](float d) {
@@ -280,10 +288,12 @@ void CFogLighting::RenderLights()
 			const int n = (r + 1) % RAYS;
 			const float a0 = r * 2.0f * pi / RAYS, a1 = n * 2.0f * pi / RAYS;
 			const vec2 d0(std::cos(a0), std::sin(a0)), d1(std::cos(a1), std::sin(a1));
-			const float m0 = aDist[r] * 0.5f, m1 = aDist[n] * 0.5f;
-			// inner half and outer half, so the falloff stays round instead of linear
-			Graphics()->SetColor4(Col(1.0f), Col(1.0f), Col(Fall(m0)), Col(Fall(m1)));
-			const IGraphics::CFreeformItem Inner(Light.m_Pos, Light.m_Pos, Light.m_Pos + d0 * m0, Light.m_Pos + d1 * m1);
+			const float i0 = std::min(Light.m_Inner, aDist[r]), i1 = std::min(Light.m_Inner, aDist[n]);
+			const float m0 = (aDist[r] + i0) * 0.5f, m1 = (aDist[n] + i1) * 0.5f;
+			// inner half and outer half, so the falloff stays round instead of linear; the light
+			// starts at the edge of its source
+			Graphics()->SetColor4(Col(Fall(i0)), Col(Fall(i1)), Col(Fall(m0)), Col(Fall(m1)));
+			const IGraphics::CFreeformItem Inner(Light.m_Pos + d0 * i0, Light.m_Pos + d1 * i1, Light.m_Pos + d0 * m0, Light.m_Pos + d1 * m1);
 			Graphics()->QuadsDrawFreeform(&Inner, 1);
 			Graphics()->SetColor4(Col(Fall(m0)), Col(Fall(m1)), Col(Fall(aDist[r])), Col(Fall(aDist[n])));
 			const IGraphics::CFreeformItem Outer(Light.m_Pos + d0 * m0, Light.m_Pos + d1 * m1, Light.m_Pos + d0 * aDist[r], Light.m_Pos + d1 * aDist[n]);
