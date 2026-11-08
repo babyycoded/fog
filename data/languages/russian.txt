@@ -3684,6 +3684,9 @@ Fast input: your tee reacts about one tick earlier
 Uses your newest key presses for the prediction before they are sent. Rarely the tee jumps back a little when the server disagrees.
 == Использует самые свежие нажатия для предсказания ещё до отправки. Изредка тишку чуть отбрасывает назад, если сервер с ним не согласен.
 
+Smooth katana: the dash glides instead of moving in steps
+== Плавная катана: рывок скользит, а не идёт ступеньками
+
 
 Partial
 == Частично

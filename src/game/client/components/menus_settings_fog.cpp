@@ -426,6 +426,7 @@ void CMenus::RenderSettingsFogVisuals(CUIRect MainView, int Section)
 			Ui()->DoLabel(&Hint, Localize("Uses your newest key presses for the prediction before they are sent. Rarely the tee jumps back a little when the server disagrees."), 11.0f, TEXTALIGN_TL, Props);
 			TextRender()->TextColor(TextRender()->DefaultTextColor());
 		}
+		CheckBox(LeftColumn, &g_Config.m_FogSmoothKatana, Localize("Smooth katana: the dash glides instead of moving in steps"));
 		Slider(LeftColumn, &g_Config.m_ClPredictionMargin, Localize("Prediction margin"), 1, 300, " ms");
 		{
 			const char *apFreeze[] = {Localize("Off"), Localize("On"), Localize("Partial")};

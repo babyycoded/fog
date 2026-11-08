@@ -138,6 +138,10 @@ void CCharacter::HandleNinja()
 		// reset velocity so the client doesn't predict stuff
 		m_Core.m_Vel = vec2(0.f, 0.f);
 
+		// hits stay with the server when only the dash movement is predicted
+		if(!GameWorld()->m_WorldConfig.m_PredictWeapons)
+			return;
+
 		// check if we Hit anything along the way
 		{
 			CEntity *apEnts[MAX_CLIENTS];
@@ -259,7 +263,10 @@ void CCharacter::FireWeapon()
 	if(m_NumInputs < 2)
 		return;
 
-	if(!GameWorld()->m_WorldConfig.m_PredictWeapons)
+	// without weapon prediction the katana dash is still predicted (movement only), otherwise
+	// the tee stands still until each snapshot arrives and the dash moves in jerky steps
+	const bool DashOnly = !GameWorld()->m_WorldConfig.m_PredictWeapons;
+	if(DashOnly && !(GameWorld()->m_WorldConfig.m_PredictNinjaDash && m_Core.m_ActiveWeapon == WEAPON_NINJA))
 		return;
 
 	if(m_ReloadTimer != 0)
@@ -289,6 +296,9 @@ void CCharacter::FireWeapon()
 		WillFire = true;
 
 	if(!WillFire)
+		return;
+
+	if(DashOnly && m_FreezeTime) // no dash while frozen, and the pain sound comes from the server
 		return;
 
 	if(m_FreezeTime)
@@ -487,7 +497,8 @@ void CCharacter::FireWeapon()
 		// clamp to prevent massive MoveBox calculation lag with SG bug
 		m_Core.m_Ninja.m_OldVelAmount = std::clamp(length(m_Core.m_Vel), 0.0f, 6000.0f);
 
-		GameWorld()->CreatePredictedSound(m_Pos, SOUND_NINJA_FIRE, GetCid());
+		if(!DashOnly) // the server's own sound plays when weapons are not predicted
+			GameWorld()->CreatePredictedSound(m_Pos, SOUND_NINJA_FIRE, GetCid());
 	}
 	break;
 	}

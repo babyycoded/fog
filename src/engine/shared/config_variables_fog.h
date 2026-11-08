@@ -129,6 +129,7 @@ MACRO_CONFIG_INT(FogCrosshairOutline, fog_crosshair_outline, 1, 0, 1, CFGFLAG_CL
 MACRO_CONFIG_INT(FogCrosshairDynamic, fog_crosshair_dynamic, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The crosshair opens up while you move fast")
 MACRO_CONFIG_INT(FogCursor, fog_cursor, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Menu cursor: 0 game arrow, 1 hook head, 2 Fog mark, 3 dot")
 MACRO_CONFIG_INT(FogCursorSize, fog_cursor_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Menu cursor size (percent)")
+MACRO_CONFIG_INT(FogSmoothKatana, fog_smooth_katana, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Smooth katana: predict the ninja dash on your side so it glides instead of moving in steps")
 MACRO_CONFIG_INT(FogFastInput, fog_fast_input, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input: predict your newest tick with the live input (about one tick less input delay, may mispredict slightly)")
 MACRO_CONFIG_STR(FogSoundPack, fog_sound_pack, 32, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fog sound pack (fog, crisp, retro, deep, arcade, quiet; empty = game sounds)")
 

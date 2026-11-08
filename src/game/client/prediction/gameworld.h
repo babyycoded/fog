@@ -78,6 +78,7 @@ public:
 		bool m_PredictTiles;
 		int m_PredictFreeze;
 		bool m_PredictWeapons;
+		bool m_PredictNinjaDash; // Fog smooth katana: predict the dash movement even without weapon prediction
 		bool m_PredictDDRace;
 		bool m_IsSolo;
 		bool m_UseTuneZones;
