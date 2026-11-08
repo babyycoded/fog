@@ -2835,6 +2835,7 @@ set(EXPECTED_DATA
   skins/warpaint.png
   skins/wartee.png
   skins/whis.png
+  skins/whis_fog.png
   skins/x_ninja.png
   skins/x_spec.png
   skins7/beaver.json
