@@ -162,6 +162,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Particles.m_RenderGeneral,
 					      &m_FreezeBars,
 					      &m_DamageInd,
+					      &m_FogWorldMark, // the world ends here: motion blur never touches what follows
 					      &m_Hud,
 					      &m_FogMusicWidget,
 					      &m_Spectator,

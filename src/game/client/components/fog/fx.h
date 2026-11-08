@@ -37,4 +37,13 @@ private:
 	void RenderShadows();
 };
 
+// Marks the end of the world in the frame (right before the HUD): motion blur stays on the
+// world and never smears the interface
+class CFogWorldMark : public CComponent
+{
+public:
+	int Sizeof() const override { return sizeof(*this); }
+	void OnRender() override;
+};
+
 #endif

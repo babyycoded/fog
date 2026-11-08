@@ -91,6 +91,10 @@ void CCommandProcessorFragment_OpenGL::SetState(const CCommandBuffer::SState &St
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 		break;
+	case EBlendMode::FOG_WORLD_MASK: // only meaningful for the Vulkan post pass: draw nothing
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ZERO, GL_ONE);
+		break;
 	default:
 		dbg_assert_failed("Invalid blend mode: %d", (int)State.m_BlendMode);
 	};
@@ -1188,6 +1192,9 @@ void CCommandProcessorFragment_OpenGL2::SetState(const CCommandBuffer::SState &S
 		case EBlendMode::ADDITIVE:
 			// glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+			break;
+		case EBlendMode::FOG_WORLD_MASK:
+			glBlendFunc(GL_ZERO, GL_ONE);
 			break;
 		default:
 			dbg_assert_failed("Invalid blend mode: %d", (int)State.m_BlendMode);

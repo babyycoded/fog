@@ -340,6 +340,8 @@ public:
 	virtual void BlendNone() = 0;
 	virtual void BlendNormal() = 0;
 	virtual void BlendAdditive() = 0;
+	// Fog: everything drawn before this mark is the world (motion blur only touches the world)
+	virtual void BlendFogWorldMask() = 0;
 	virtual void WrapNormal() = 0;
 	virtual void WrapClamp() = 0;
 

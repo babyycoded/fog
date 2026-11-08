@@ -166,6 +166,11 @@ void CGraphics_Threaded::BlendAdditive()
 	m_State.m_BlendMode = EBlendMode::ADDITIVE;
 }
 
+void CGraphics_Threaded::BlendFogWorldMask()
+{
+	m_State.m_BlendMode = EBlendMode::FOG_WORLD_MASK;
+}
+
 void CGraphics_Threaded::WrapNormal()
 {
 	m_State.m_WrapMode = EWrapMode::REPEAT;

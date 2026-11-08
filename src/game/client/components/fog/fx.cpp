@@ -1269,3 +1269,20 @@ void CFogFx::OnRender()
 }
 
 vec2 FogCameraLag() { return gs_State.m_CamLag; }
+
+void CFogWorldMark::OnRender()
+{
+	if(!g_Config.m_FogMotionBlur || (Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK))
+		return;
+	const CScreenRect OldScreen = Graphics()->GetScreen();
+	Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, 1.0f, 1.0f));
+	Graphics()->BlendFogWorldMask();
+	Graphics()->TextureClear();
+	Graphics()->QuadsBegin();
+	Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.0f);
+	IGraphics::CQuadItem Full(0.0f, 0.0f, 1.0f, 1.0f);
+	Graphics()->QuadsDrawTL(&Full, 1);
+	Graphics()->QuadsEnd();
+	Graphics()->BlendNormal();
+	Graphics()->MapScreen(OldScreen);
+}

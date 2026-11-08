@@ -36,6 +36,7 @@ enum class EBlendMode
 	NONE,
 	ALPHA,
 	ADDITIVE,
+	FOG_WORLD_MASK, // Fog: keeps the colour, sets alpha to 0 (marks where the world ends)
 };
 
 enum class EWrapMode
@@ -907,6 +908,7 @@ public:
 	void BlendNone() override;
 	void BlendNormal() override;
 	void BlendAdditive() override;
+	void BlendFogWorldMask() override;
 
 	void WrapNormal() override;
 	void WrapClamp() override;

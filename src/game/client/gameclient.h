@@ -216,6 +216,7 @@ public:
 	CFogTrails m_FogTrails;
 	CFogFx m_FogFxBack{false};
 	CFogFx m_FogFxFront{true};
+	CFogWorldMark m_FogWorldMark;
 
 	CMapSounds m_MapSounds;
 

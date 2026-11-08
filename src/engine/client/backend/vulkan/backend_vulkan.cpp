@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdlib>
@@ -620,6 +621,7 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 		VULKAN_BACKEND_BLEND_MODE_ALPHA = 0,
 		VULKAN_BACKEND_BLEND_MODE_NONE,
 		VULKAN_BACKEND_BLEND_MODE_ADDITATIVE,
+		VULKAN_BACKEND_BLEND_MODE_FOG_WORLD_MASK,
 
 		VULKAN_BACKEND_BLEND_MODE_COUNT,
 	};
@@ -984,6 +986,7 @@ private:
 		float m_aFilter[4];
 	};
 	bool m_PostEnabled = false;
+	std::atomic<bool> m_FogWorldMarked{false}; // the world mask was drawn this frame
 	std::vector<SPostImage> m_vPostSceneImages;
 	std::vector<SPostImage> m_vPostHistoryImages;
 	std::vector<bool> m_vPostHistoryWritten;
@@ -3255,6 +3258,9 @@ protected:
 			return VULKAN_BACKEND_BLEND_MODE_ALPHA;
 		case EBlendMode::ADDITIVE:
 			return VULKAN_BACKEND_BLEND_MODE_ADDITATIVE;
+		case EBlendMode::FOG_WORLD_MASK:
+			m_FogWorldMarked = true;
+			return VULKAN_BACKEND_BLEND_MODE_FOG_WORLD_MASK;
 		default:
 			dbg_assert_failed("Invalid blend mode: %d", (int)State.m_BlendMode);
 		};
@@ -4952,7 +4958,8 @@ public:
 		m_PostLastTime = Now;
 
 		float Blend = 0.0f;
-		if(g_Config.m_FogMotionBlur && HaveHistory && g_Config.m_FogMotionBlurStrength > 0)
+		const bool WorldMarked = m_FogWorldMarked.exchange(false);
+		if(g_Config.m_FogMotionBlur && HaveHistory && WorldMarked && g_Config.m_FogMotionBlurStrength > 0)
 		{
 			// frame-rate independent: the trail fades with a time constant, not per frame
 			const float Tau = g_Config.m_FogMotionBlurStrength / 100.0f * 0.012f;
@@ -5236,6 +5243,25 @@ public:
 
 		GetStandardPipelineInfo(InputAssembly, Viewport, Scissor, ViewportState, Rasterizer, Multisampling, ColorBlendAttachment, ColorBlending);
 		InputAssembly.topology = IsLinePrim ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		// Fog: additive really adds (as in OpenGL; before, it blended like alpha), and the world
+		// mask keeps the colour while clearing alpha so the post pass knows what is world
+		if(m_PostEnabled && BlendMode != VULKAN_BACKEND_BLEND_MODE_FOG_WORLD_MASK)
+		{
+			// alpha piles up like coverage, so even faint interface glass marks its pixels
+			ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		}
+		if(BlendMode == VULKAN_BACKEND_BLEND_MODE_ADDITATIVE)
+		{
+			ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		}
+		else if(BlendMode == VULKAN_BACKEND_BLEND_MODE_FOG_WORLD_MASK)
+		{
+			ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+			ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		}
 
 		VkPipelineLayoutCreateInfo PipelineLayoutInfo{};
 		PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

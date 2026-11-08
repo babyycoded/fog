@@ -181,9 +181,36 @@ void main()
 
 	Col = clamp(Col, 0.0, 1.0);
 
-	// motion blur: blend with the previous output (frame-rate independent factor from the CPU)
-	vec3 Prev = texture(gHistory, vUV).rgb;
-	vec3 Out = mix(Col, Prev, gParams.gScreen.w);
+	// motion blur only on the world: the client clears alpha right after the world is drawn and
+	// everything after (HUD, menus, cursor) raises it again, so alpha says how much is interface.
+	// The interface stays crisp and the history keeps only the world, so a closed menu leaves no
+	// ghost behind.
+	vec4 PrevAll = texture(gHistory, vUV);
+	vec3 Prev = PrevAll.rgb;
+	float Blend = gParams.gScreen.w;
+	vec3 Out = Col;
+	vec3 History = Col;
+	float WasInterface = 0.0;
+	if(Blend > 0.0)
+	{
+		float Alpha = texture(gScene, vUV).a;
+		// how much of the pixel is interface, for the picture; and a strict flag: anything the
+		// interface touched at all (fading menus too) is neither blurred nor kept in the history
+		float Interface = smoothstep(0.03, 0.12, Alpha);
+		float Touched = step(0.01, Alpha);
+		// where interface was last frame the history is stale: start this pixel's trail fresh
+		float PixelBlend = Blend * (1.0 - step(0.5, PrevAll.a)) * (1.0 - Touched);
+		// the history is 8-bit: at high frame rates the per-frame step towards the new picture is
+		// smaller than one level and the trail would freeze forever (ghosts of old screens), so
+		// always move at least a level and a half
+		vec3 Diff = Col - Prev;
+		vec3 Step = Diff * (1.0 - PixelBlend);
+		Step = sign(Diff) * max(abs(Step), min(abs(Diff), vec3(1.5 / 255.0)));
+		vec3 World = Prev + Step;
+		Out = mix(World, Col, Interface);
+		History = World;
+		WasInterface = Touched;
+	}
+	HistoryOut = vec4(History, WasInterface);
 	FragOut = vec4(Out, 1.0);
-	HistoryOut = vec4(Out, 1.0);
 }
