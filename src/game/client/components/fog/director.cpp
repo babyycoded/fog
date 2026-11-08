@@ -130,7 +130,7 @@ void CFogDirector::BuildMenuScene()
 	m_vPath.push_back(Start);
 	for(int Index : {NAV_PLAY, NAV_DEMOS, NAV_EDITOR, NAV_SERVER, NAV_SETTINGS})
 		m_vPath.push_back(Nav(0.0f, Index, false));
-	m_PathEnd = 3.6f;
+	m_PathEnd = 4.2f;
 	m_vKeys.push_back(Nav(m_PathEnd, NAV_SETTINGS, false));
 	float T = m_PathEnd + 0.4f;
 	m_vKeys.push_back(Nav(T, NAV_SETTINGS, true)); // opens Settings
@@ -278,6 +278,8 @@ void CFogDirector::Caption(float Start, float End, const char *pTitle, const cha
 
 void CFogDirector::RenderCaptions()
 {
+	if(!g_Config.m_FogDirectorCaptions)
+		return;
 	const SCaption *pCaption = nullptr;
 	for(const SCaption &Candidate : m_vCaptions)
 		if(m_Time >= Candidate.m_Start && m_Time < Candidate.m_End)
@@ -326,12 +328,6 @@ void CFogDirector::RenderCaptions()
 
 vec2 CFogDirector::PathPosition(float Time, vec2 Fallback) const
 {
-	// Progress along the curve: cubic ease-in makes the start crawl, a gentler ease-out brings it
-	// to rest on the last row.
-	const float Tau = std::clamp(Time / m_PathEnd, 0.0f, 1.0f);
-	const float In = Tau * Tau * Tau, Out = std::pow(1.0f - Tau, 1.6f);
-	const float U = In / (In + Out);
-
 	const int Count = (int)m_vPath.size();
 	std::vector<vec2> vPoints;
 	vec2 Last = Fallback;
@@ -340,15 +336,40 @@ vec2 CFogDirector::PathPosition(float Time, vec2 Fallback) const
 		Last = Resolve(Key, Last);
 		vPoints.push_back(Last);
 	}
-	const float Scaled = U * (Count - 1);
-	const int Segment = std::min((int)Scaled, Count - 2);
-	const float F = Scaled - Segment;
-	const vec2 P0 = vPoints[std::max(Segment - 1, 0)], P1 = vPoints[Segment], P2 = vPoints[Segment + 1], P3 = vPoints[std::min(Segment + 2, Count - 1)];
-	// Catmull-Rom spline through the rows
-	const float F2 = F * F, F3 = F2 * F;
-	const vec2 A = P1 * 2.0f;
-	const vec2 B = (P2 - P0) * F;
-	const vec2 C = (P0 * 2.0f - P1 * 5.0f + P2 * 4.0f - P3) * F2;
-	const vec2 D = (P1 * 3.0f - P0 - P2 * 3.0f + P3) * F3;
-	return (A + B + C + D) * 0.5f;
+
+	// Catmull-Rom through the rows, parameter S in [0, Count - 1]
+	const auto Spline = [&](float S) {
+		const int Segment = std::clamp((int)S, 0, Count - 2);
+		const float F = S - Segment, F2 = F * F, F3 = F2 * F;
+		const vec2 P0 = vPoints[std::max(Segment - 1, 0)], P1 = vPoints[Segment], P2 = vPoints[Segment + 1], P3 = vPoints[std::min(Segment + 2, Count - 1)];
+		const vec2 A = P1 * 2.0f;
+		const vec2 B = (P2 - P0) * F;
+		const vec2 C = (P0 * 2.0f - P1 * 5.0f + P2 * 4.0f - P3) * F2;
+		const vec2 D = (P1 * 3.0f - P0 - P2 * 3.0f + P3) * F3;
+		return (A + B + C + D) * 0.5f;
+	};
+
+	// Arc-length table, so speed depends on distance travelled and not on how the rows are spaced
+	constexpr int SAMPLES_PER_SEGMENT = 48;
+	const int Total = (Count - 1) * SAMPLES_PER_SEGMENT;
+	std::vector<float> vLength(Total + 1, 0.0f);
+	vec2 PrevPoint = Spline(0.0f);
+	for(int i = 1; i <= Total; i++)
+	{
+		const vec2 Point = Spline((float)i / SAMPLES_PER_SEGMENT);
+		vLength[i] = vLength[i - 1] + length(Point - PrevPoint);
+		PrevPoint = Point;
+	}
+
+	// Progress in distance: a long crawl, smooth acceleration, a soft landing (one curve, no stops between rows)
+	const float Tau = std::clamp(Time / m_PathEnd, 0.0f, 1.0f);
+	const float In = Tau * Tau * Tau * Tau, Out = std::pow(1.0f - Tau, 1.8f);
+	const float U = In / (In + Out);
+	const float TargetLength = U * vLength[Total];
+	int Index = 0;
+	while(Index < Total && vLength[Index + 1] < TargetLength)
+		Index++;
+	const float SegmentLength = std::max(vLength[std::min(Index + 1, Total)] - vLength[Index], 0.0001f);
+	const float Fraction = std::clamp((TargetLength - vLength[Index]) / SegmentLength, 0.0f, 1.0f);
+	return Spline(((float)Index + Fraction) / SAMPLES_PER_SEGMENT);
 }

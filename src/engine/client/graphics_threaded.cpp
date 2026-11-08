@@ -3,6 +3,10 @@
 
 #include "graphics_threaded.h"
 
+#include <chrono>
+#include <deque>
+#include <thread>
+
 #include <base/dbg.h>
 #include <base/detect.h>
 #include <base/io.h>
@@ -723,7 +727,20 @@ void CGraphics_Threaded::ScreenshotDirect(bool *pSwapped)
 
 	if(Image.m_pData)
 	{
-		m_pEngine->AddJob(std::make_shared<CScreenshotSaveJob>(m_pStorage, m_aScreenshotName, std::move(Image)));
+		auto pJob = std::make_shared<CScreenshotSaveJob>(m_pStorage, m_aScreenshotName, std::move(Image));
+		m_pEngine->AddJob(pJob);
+		if(g_Config.m_FogCaptureActive)
+		{
+			// Trailer capture: a 4K frame is ~33 MB, so never let the save queue grow (it once ate all the RAM).
+			static std::deque<std::shared_ptr<IJob>> s_vPending;
+			s_vPending.push_back(pJob);
+			while(s_vPending.size() > 3)
+			{
+				while(s_vPending.front()->State() == IJob::STATE_QUEUED || s_vPending.front()->State() == IJob::STATE_RUNNING)
+					std::this_thread::sleep_for(std::chrono::milliseconds(2));
+				s_vPending.pop_front();
+			}
+		}
 	}
 	else
 	{

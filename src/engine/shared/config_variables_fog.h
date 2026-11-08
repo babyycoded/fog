@@ -229,3 +229,4 @@ MACRO_CONFIG_INT(FogCaptureRecord, fog_capture_record, 0, 0, 1, CFGFLAG_CLIENT, 
 MACRO_CONFIG_INT(FogCaptureFps, fog_capture_fps, 30, 10, 120, CFGFLAG_CLIENT, "Dev: frame rate of the trailer capture")
 MACRO_CONFIG_INT(FogCaptureActive, fog_capture_active, 0, 0, 1, CFGFLAG_CLIENT, "Dev: set by the director while it is capturing")
 MACRO_CONFIG_INT(FogDirectorFormat, fog_director_format, 0, 0, 1, CFGFLAG_CLIENT, "Dev: trailer framing, 0 = 16:9 (captions centred), 1 = 9:16 crop (captions follow the crop window)")
+MACRO_CONFIG_INT(FogDirectorCaptions, fog_director_captions, 1, 0, 1, CFGFLAG_CLIENT, "Dev: draw the trailer captions in the engine (0 = clean footage for the film editor)")
