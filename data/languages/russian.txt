@@ -4401,3 +4401,9 @@ Blurred far background
 
 Background blur
 == Размытие фона
+
+No favorite servers yet. Open a server in Internet and press the star
+== В избранном пока пусто. Открой сервер во вкладке «Интернет» и нажми звёздочку
+
+Open Internet
+== Открыть «Интернет»

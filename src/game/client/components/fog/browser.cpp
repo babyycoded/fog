@@ -864,8 +864,18 @@ void CMenus::RenderFogServerbrowser(CUIRect MainView)
 			pMessage = Localize("Could not get server list from master server");
 		else if(ServerBrowser()->NumServers())
 			pMessage = Localize("No servers match your filter criteria");
+		// an empty favorites list is not a filter problem: say how to fill it
+		const bool NoFavorites = !ServerBrowser()->NumServers() && ServerBrowser()->GetCurrentType() == IServerBrowser::TYPE_FAVORITES;
+		if(NoFavorites)
+			pMessage = Localize("No favorite servers yet. Open a server in Internet and press the star");
 		FogLabel(Ui(), TextRender(), Message, pMessage, 15.0f, TEXTALIGN_MC, MIST, "Manrope", 600);
-		if(ServerBrowser()->NumServers())
+		if(NoFavorites)
+		{
+			static CButtonContainer s_InternetButton;
+			if(DoButton_Menu(&s_InternetButton, Localize("Open Internet"), 0, &Action, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, Action.h / 2.0f))
+				SetMenuPage(PAGE_INTERNET);
+		}
+		else if(ServerBrowser()->NumServers())
 		{
 			static CButtonContainer s_ResetButton;
 			if(DoButton_Menu(&s_ResetButton, Localize("Reset filter"), 0, &Action, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, Action.h / 2.0f))
