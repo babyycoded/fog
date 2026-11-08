@@ -37,20 +37,38 @@ void FogDrawGlass(IGraphics *pGraphics, const CUIRect &Rect, float Rounding, flo
 	}
 
 	// rim: a hairline that is brighter at the top, where light hits the glass
-	const ColorRGBA RimTop(1.0f, 1.0f, 1.0f, (0.10f + 0.16f * Sheen) * Alpha);
-	const ColorRGBA RimBottom(1.0f, 1.0f, 1.0f, 0.04f * Alpha);
+	// on a round shape the rounded corners take the whole height and paint each half in one flat
+	// colour, so a vertical gradient turns into a hard seam across the middle: keep those flat
+	const bool Round = Rounding >= h * 0.4f;
+	ColorRGBA RimTop(1.0f, 1.0f, 1.0f, (0.10f + 0.16f * Sheen) * Alpha);
+	ColorRGBA RimBottom(1.0f, 1.0f, 1.0f, 0.04f * Alpha);
+	if(Round)
+		RimTop = RimBottom = ColorRGBA(1.0f, 1.0f, 1.0f, (0.07f + 0.08f * Sheen) * Alpha);
 	pGraphics->DrawRect4(x - 0.75f, y - 0.75f, w + 1.5f, h + 1.5f, RimTop, RimTop, RimBottom, RimBottom, IGraphics::CORNER_ALL, Rounding + 0.75f);
 
 	// body: frosted tint, slightly lighter at the top
 	const auto Lift = [](const ColorRGBA &c, float Amount) {
 		return ColorRGBA(std::min(c.r + Amount, 1.0f), std::min(c.g + Amount, 1.0f), std::min(c.b + Amount, 1.0f), c.a);
 	};
-	const ColorRGBA BodyTop = Lift(Tint, 0.05f).WithMultipliedAlpha(Alpha);
-	const ColorRGBA BodyBottom = Tint.WithMultipliedAlpha(Alpha * 1.08f);
+	ColorRGBA BodyTop = Lift(Tint, 0.05f).WithMultipliedAlpha(Alpha);
+	ColorRGBA BodyBottom = Tint.WithMultipliedAlpha(Alpha * 1.08f);
+	if(Round)
+		BodyTop = BodyBottom = Lift(Tint, 0.025f).WithMultipliedAlpha(Alpha * 1.04f);
 	pGraphics->DrawRect4(x, y, w, h, BodyTop, BodyTop, BodyBottom, BodyBottom, IGraphics::CORNER_ALL, Rounding);
 
 	// sheen: light pooled on the upper half, the "liquid" curve of the glass
-	if(Sheen > 0.0f)
+	if(Sheen > 0.0f && Round)
+	{
+		// round buttons: the rounded corners would fill a half-height sheen with one flat colour
+		// and cut the circle in two, so the light is a small soft lens near the top instead
+		for(int i = 0; i < 3; i++)
+		{
+			const float Inset = 0.16f + i * 0.07f;
+			const float lw = w * (1.0f - Inset * 2.0f), lh = h * (0.34f - i * 0.07f);
+			pGraphics->DrawRect(x + w * Inset, y + h * (0.06f + i * 0.025f), lw, lh, ColorRGBA(1.0f, 1.0f, 1.0f, 0.035f * Sheen * Alpha), IGraphics::CORNER_ALL, lh * 0.5f);
+		}
+	}
+	else if(Sheen > 0.0f)
 	{
 		const ColorRGBA SheenTop(1.0f, 1.0f, 1.0f, 0.09f * Sheen * Alpha);
 		const ColorRGBA SheenBottom(1.0f, 1.0f, 1.0f, 0.0f);

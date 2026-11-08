@@ -25,6 +25,20 @@ float CatmullRom(float t)
 	return 0.0f;
 }
 
+// cubic B-spline: smooth, no ringing; its 0.5 isoline turns pixel stairs into clean curves
+float BSpline(float t)
+{
+	t = std::abs(t);
+	if(t < 1.0f)
+		return (4.0f - 6.0f * t * t + 3.0f * t * t * t) / 6.0f;
+	if(t < 2.0f)
+	{
+		const float u = 2.0f - t;
+		return u * u * u / 6.0f;
+	}
+	return 0.0f;
+}
+
 // RGBA8 -> premultiplied float, upscale by an integer factor, sharpen a little, back to RGBA8
 void Upscale(const CImageInfo &Src, int Factor, CImageInfo &Dst)
 {
@@ -92,15 +106,85 @@ void Upscale(const CImageInfo &Src, int Factor, CImageInfo &Dst)
 				vSharp[((size_t)y * DW + x) * 4 + c] = v + (v - Blur) * Amount;
 			}
 
+	// Hand-drawn skins have hard 1-bit-like alpha, so magnifying them keeps the pixel stairs on
+	// the silhouette. Where the source alpha is hard, rebuild the edge from a smooth (B-spline)
+	// alpha field cut at 0.5 with a ~1.3 px ramp: a crisp, curved outline instead of a blurry
+	// staircase. Soft or translucent areas keep the plain bicubic alpha.
+	std::vector<uint8_t> vHard((size_t)W * H);
+	for(size_t i = 0; i < (size_t)W * H; i++)
+		vHard[i] = vSrc[i * 4 + 3] < 0.08f || vSrc[i * 4 + 3] > 0.92f;
+	std::vector<float> vATmp((size_t)DW * H), vA((size_t)DW * DH);
+	for(int y = 0; y < H; y++)
+		for(int x = 0; x < DW; x++)
+		{
+			const float sx = (x + 0.5f) / Factor - 0.5f;
+			const int x0 = (int)std::floor(sx);
+			float Acc = 0.0f;
+			for(int k = -1; k <= 2; k++)
+				Acc += vSrc[((size_t)y * W + std::clamp(x0 + k, 0, W - 1)) * 4 + 3] * BSpline(sx - (x0 + k));
+			vATmp[(size_t)y * DW + x] = Acc;
+		}
+	for(int y = 0; y < DH; y++)
+	{
+		const float sy = (y + 0.5f) / Factor - 0.5f;
+		const int y0 = (int)std::floor(sy);
+		for(int x = 0; x < DW; x++)
+		{
+			float Acc = 0.0f;
+			for(int k = -1; k <= 2; k++)
+				Acc += vATmp[(size_t)std::clamp(y0 + k, 0, H - 1) * DW + x] * BSpline(sy - (y0 + k));
+			vA[(size_t)y * DW + x] = Acc;
+		}
+	}
+	const float Ramp = 0.45f / Factor;
+
 	Dst.m_Width = DW;
 	Dst.m_Height = DH;
 	Dst.m_Format = CImageInfo::FORMAT_RGBA;
 	Dst.Allocate();
 	for(size_t i = 0; i < (size_t)DW * DH; i++)
 	{
-		const float a = std::clamp(vSharp[i * 4 + 3], 0.0f, 1.0f);
+		float a = std::clamp(vSharp[i * 4 + 3], 0.0f, 1.0f);
+		const int x = (int)(i % DW), y = (int)(i / DW);
+		const int sx = std::min(x / Factor, W - 1), sy = std::min(y / Factor, H - 1);
+		bool Hard = true;
+		for(int dy = -1; dy <= 1 && Hard; dy++)
+			for(int dx = -1; dx <= 1; dx++)
+				if(!vHard[(size_t)std::clamp(sy + dy, 0, H - 1) * W + std::clamp(sx + dx, 0, W - 1)])
+				{
+					Hard = false;
+					break;
+				}
+		// color: the bicubic one where it is defined, else the most opaque nearby source pixel
+		float aCol[3];
+		if(a > 0.02f)
+		{
+			for(int c = 0; c < 3; c++)
+				aCol[c] = vSharp[i * 4 + c] / a;
+		}
+		else
+		{
+			float Best = -1.0f;
+			aCol[0] = aCol[1] = aCol[2] = 0.0f;
+			for(int dy = -1; dy <= 1; dy++)
+				for(int dx = -1; dx <= 1; dx++)
+				{
+					const size_t j = (size_t)std::clamp(sy + dy, 0, H - 1) * W + std::clamp(sx + dx, 0, W - 1);
+					if(vSrc[j * 4 + 3] > Best)
+					{
+						Best = vSrc[j * 4 + 3];
+						for(int c = 0; c < 3; c++)
+							aCol[c] = Best > 0.0f ? vSrc[j * 4 + c] / Best : 0.0f;
+					}
+				}
+		}
+		if(Hard)
+		{
+			const float t = std::clamp((vA[i] - (0.5f - Ramp)) / (2.0f * Ramp), 0.0f, 1.0f);
+			a = t * t * (3.0f - 2.0f * t);
+		}
 		for(int c = 0; c < 3; c++)
-			Dst.m_pData[i * 4 + c] = (uint8_t)std::lround(std::clamp(a > 0.001f ? vSharp[i * 4 + c] / a : 0.0f, 0.0f, 1.0f) * 255.0f);
+			Dst.m_pData[i * 4 + c] = (uint8_t)std::lround(std::clamp(aCol[c], 0.0f, 1.0f) * 255.0f);
 		Dst.m_pData[i * 4 + 3] = (uint8_t)std::lround(a * 255.0f);
 	}
 }
