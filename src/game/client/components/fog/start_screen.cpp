@@ -3,6 +3,7 @@
 // while the Fog interface is enabled; every action and hotkey of the stock menu is kept.
 
 #include "brand.h"
+#include "director.h"
 #include "glass.h"
 #include "hires_tee.h"
 #include "music.h"
@@ -118,6 +119,12 @@ void CMenusStart::RenderFogStart(CUIRect MainView)
 		const float Appear = EaseOut((Intro - 0.12f - Index * 0.05f) / 0.4f);
 		Row.x -= (1.0f - Appear) * 16.0f;
 		const int Clicked = Ui()->DoButtonLogic(Item.m_pButton, 0, &Row, BUTTONFLAG_LEFT);
+		{
+			const CButtonContainer *aIds[] = {&s_Play, &s_Demos, &s_Editor, &s_Server, &s_Settings, &s_News, &s_Quit};
+			for(int Nav = 0; Nav < CFogDirector::NUM_NAV; Nav++)
+				if(aIds[Nav] == Item.m_pButton)
+					CFogDirector::PublishNavRect(Nav, vec2(Row.x, Row.y), vec2(Row.w, Row.h));
+		}
 		if(Ui()->HotItem() == Item.m_pButton)
 			HoverY = Row.y;
 		if(Clicked)

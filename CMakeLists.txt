@@ -3644,6 +3644,8 @@ if(CLIENT)
     components/fog/tee_style.cpp
     components/fog/tee_style.h
     components/fog/trails.cpp
+    components/fog/director.cpp
+    components/fog/director.h
     components/fog/trails.h
     components/freezebars.cpp
     components/freezebars.h

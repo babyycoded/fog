@@ -237,6 +237,12 @@ void CUi::Update()
 		}
 	}
 
+	if(m_FogScripted)
+	{
+		m_UpdatedMousePos = m_FogScriptedPos;
+		m_UpdatedMouseButtons = m_FogScriptedButtons;
+	}
+
 	m_MousePos = m_UpdatedMousePos * vec2(pScreen->w, pScreen->h) / WindowSize;
 	m_MouseDelta = m_UpdatedMouseDelta;
 	m_UpdatedMouseDelta = vec2(0.0f, 0.0f);

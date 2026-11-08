@@ -42,6 +42,7 @@
 #include "components/effects.h"
 #include "components/emoticon.h"
 #include "components/flow.h"
+#include "components/fog/director.h"
 #include "components/fog/lyrics_world.h"
 #include "components/fog/music.h"
 #include "components/fog/atmosphere.h"
@@ -215,6 +216,7 @@ public:
 	CFogAtmosphere m_FogAtmosphereFront{true};
 	CFogMusicWidget m_FogMusicWidget;
 	CFogTrails m_FogTrails;
+	CFogDirector m_FogDirector;
 	CFogFx m_FogFxBack{false};
 	CFogFx m_FogFxFront{true};
 	CFogWorldMark m_FogWorldMark;

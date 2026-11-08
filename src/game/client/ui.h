@@ -439,6 +439,9 @@ private:
 	CValueSelectorState m_ActiveValueSelectorState;
 
 	vec2 m_UpdatedMousePos = vec2(0.0f, 0.0f); // in window screen space
+	bool m_FogScripted = false; // trailer director drives the mouse
+	vec2 m_FogScriptedPos = vec2(0.0f, 0.0f); // window screen space
+	unsigned m_FogScriptedButtons = 0;
 	vec2 m_UpdatedMouseDelta = vec2(0.0f, 0.0f); // in window screen space
 	vec2 m_MousePos = vec2(0.0f, 0.0f); // in gui space
 	vec2 m_MouseDelta = vec2(0.0f, 0.0f); // in gui space
@@ -552,6 +555,14 @@ public:
 	void DebugRender(float X, float Y);
 
 	vec2 MousePos() const { return m_MousePos; }
+	// Fog trailer director: drive the cursor (window space) and buttons; Enable=false returns control.
+	void FogScriptMouse(bool Enable, vec2 WindowPos, unsigned Buttons)
+	{
+		m_FogScripted = Enable;
+		m_FogScriptedPos = WindowPos;
+		m_FogScriptedButtons = Buttons;
+	}
+	bool FogScripted() const { return m_FogScripted; }
 	float MouseX() const { return m_MousePos.x; }
 	float MouseY() const { return m_MousePos.y; }
 	vec2 MouseDelta() const { return m_MouseDelta; }
