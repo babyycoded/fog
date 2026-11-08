@@ -7,6 +7,7 @@
 
 #include <game/client/component.h>
 
+#include <string>
 #include <vector>
 
 // Dev-only scripted camera operator for the Fog trailer. It drives the UI cursor along a
@@ -48,6 +49,21 @@ private:
 		int m_Nav = -1; // else the centre of this published row, read live
 		bool m_Click; // press at this key
 	};
+
+	struct SCaption
+	{
+		float m_Start, m_End;
+		std::string m_Title, m_Sub;
+	};
+	std::vector<SCaption> m_vCaptions;
+	float m_CropX = -1.0f; // 9:16 crop window left edge, in 3840x2160 capture pixels
+	float m_CropV = 0.0f;
+	std::vector<float> m_vCropLog;
+	void RenderCaptions();
+	std::vector<SKey> m_vPath; // the opening run down the rail: one smooth curve through these rows
+	float m_PathEnd = 0.0f;
+	vec2 PathPosition(float Time, vec2 Fallback) const;
+	void Caption(float Start, float End, const char *pTitle, const char *pSub);
 
 	bool m_Active = false;
 	bool m_Pending = false; // waiting for the scene to have laid itself out

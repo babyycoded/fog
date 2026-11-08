@@ -139,7 +139,6 @@ void CGameClient::OnConsoleInit()
 					      &m_FogPresence, // doesn't render anything, heartbeats to the Fog presence server
 					      &m_FogTeeStyle, // doesn't render anything, keeps the studio look and the dummy sync
 					      &m_FogAccessories, // draws through CRenderTools::RenderTee for your own tees
-					      &m_FogDirector, // dev-only scripted cursor for the trailer
 					      &m_FogPainter, // the tee studio's drawing canvas
 					      &m_FogSkinCatalog, // skins from ddnet.org and teedata.net for the studio
 					      &m_Background, // render instead of m_MapLayersBackground when g_Config.m_ClOverlayEntities == 100
@@ -182,6 +181,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Menus,
 					      &m_KeyBinder,
 					      &m_GameConsole,
+					      &m_FogDirector, // dev-only trailer director: scripted cursor and captions, on top of everything
 					      &m_MenuBackground});
 
 	// build the input stack
