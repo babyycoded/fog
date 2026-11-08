@@ -3615,6 +3615,8 @@ if(CLIENT)
     components/fog/hires_tee.h
     components/fog/hud.cpp
     components/fog/ingame.cpp
+    components/fog/lighting.cpp
+    components/fog/lighting.h
     components/fog/look.cpp
     components/fog/look.h
     components/fog/lyrics.cpp

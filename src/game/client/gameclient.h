@@ -49,6 +49,7 @@
 #include "components/fog/accessories.h"
 #include "components/fog/painter.h"
 #include "components/fog/fx.h"
+#include "components/fog/lighting.h"
 #include "components/fog/presence.h"
 #include "components/fog/skin_catalog.h"
 #include "components/fog/tee_style.h"
@@ -217,6 +218,8 @@ public:
 	CFogFx m_FogFxBack{false};
 	CFogFx m_FogFxFront{true};
 	CFogWorldMark m_FogWorldMark;
+	CFogLighting m_FogLightingBack{false};
+	CFogLighting m_FogLightingFront{true};
 
 	CMapSounds m_MapSounds;
 

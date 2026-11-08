@@ -345,6 +345,25 @@ void CMenus::RenderSettingsFogVisuals(CUIRect MainView, int Section)
 		Slider(RightColumn, &g_Config.m_FogCameraLag, Localize("Soft camera"), 0, 100, "%");
 		CheckBox(RightColumn, &g_Config.m_FogSpeedVignette, Localize("Dark edges at high speed"));
 	}
+	else if(Section == 6)
+	{
+		Headline(LeftColumn, Localize("Light and shadow"));
+		CheckBox(LeftColumn, &g_Config.m_FogLight, Localize("Dynamic lights with shadows"));
+		Slider(LeftColumn, &g_Config.m_FogLightAmbient, Localize("Darkness outside the light"), 0, 90, "%");
+		Slider(LeftColumn, &g_Config.m_FogLightStrength, Localize("Light strength"), 10, 300, "%");
+		Slider(LeftColumn, &g_Config.m_FogLightRadius, Localize("Light reach"), 30, 300, "%");
+		CheckBox(LeftColumn, &g_Config.m_FogAo, Localize("Ambient occlusion"));
+		Slider(LeftColumn, &g_Config.m_FogAoStrength, Localize("Occlusion strength"), 10, 300, "%");
+		CheckBox(LeftColumn, &g_Config.m_FogGodRays, Localize("Light shafts from above"));
+		Slider(LeftColumn, &g_Config.m_FogGodRaysStrength, Localize("Shaft strength"), 10, 300, "%");
+		CheckBox(LeftColumn, &g_Config.m_FogWallShadows, Localize("Tee shadows on walls"));
+		Headline(RightColumn, Localize("Glow and detail"));
+		CheckBox(RightColumn, &g_Config.m_FogSourceGlow, Localize("Glow only on light sources"));
+		CheckBox(RightColumn, &g_Config.m_FogRimLight, Localize("Rim light on tees"));
+		CheckBox(RightColumn, &g_Config.m_FogFreezeShimmer, Localize("Shimmer over freeze and death"));
+		CheckBox(RightColumn, &g_Config.m_FogDof, Localize("Blurred far background"));
+		Slider(RightColumn, &g_Config.m_FogDofStrength, Localize("Background blur"), 10, 300, "%");
+	}
 	else if(Section == 5)
 	{
 		Headline(LeftColumn, Localize("Movement"));
@@ -605,7 +624,7 @@ void CMenus::RenderSettingsFog(CUIRect MainView)
 	CUIRect Tabs;
 	MainView.HSplitTop(24.0f, &Tabs, &MainView);
 	MainView.HSplitTop(12.0f, nullptr, &MainView);
-	const char *apTabs[] = {Localize("Music and lyrics", "Fog tab"), Localize("Shaders"), Localize("World"), Localize("Trails"), Localize("Players"), Localize("Interface", "Fog tab"), Localize("Gameplay", "Fog tab"), Localize("Fun")};
+	const char *apTabs[] = {Localize("Music and lyrics", "Fog tab"), Localize("Shaders"), Localize("Graphics"), Localize("World"), Localize("Trails"), Localize("Players"), Localize("Interface", "Fog tab"), Localize("Gameplay", "Fog tab"), Localize("Fun")};
 	static CButtonContainer s_aTabs[std::size(apTabs)];
 	m_FogVisualsTab = std::clamp(m_FogVisualsTab, 0, (int)std::size(apTabs) - 1);
 	Graphics()->TextureClear();
@@ -630,11 +649,12 @@ void CMenus::RenderSettingsFog(CUIRect MainView)
 	{
 	case 0: RenderSettingsFogMusic(MainView); break;
 	case 1: RenderSettingsShaders(MainView); break;
-	case 2: RenderSettingsFogVisuals(MainView, 0); break;
-	case 3: RenderSettingsFogVisuals(MainView, 1); break;
-	case 4: RenderSettingsFogVisuals(MainView, 2); break;
-	case 5: RenderSettingsFogVisuals(MainView, 3); break;
-	case 6: RenderSettingsFogVisuals(MainView, 4); break;
+	case 2: RenderSettingsFogVisuals(MainView, 6); break;
+	case 3: RenderSettingsFogVisuals(MainView, 0); break;
+	case 4: RenderSettingsFogVisuals(MainView, 1); break;
+	case 5: RenderSettingsFogVisuals(MainView, 2); break;
+	case 6: RenderSettingsFogVisuals(MainView, 3); break;
+	case 7: RenderSettingsFogVisuals(MainView, 4); break;
 	default: RenderSettingsFogVisuals(MainView, 5); break;
 	}
 }

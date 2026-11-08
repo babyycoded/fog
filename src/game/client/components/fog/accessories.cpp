@@ -694,3 +694,16 @@ void CFogAccessories::RenderAura(int Slot, const CAnimState *pAnim, vec2 Pos, ve
 	}
 	Graphics()->QuadsSetRotation(0.0f);
 }
+
+bool CFogAccessories::DrawPlayerSilhouette(int ClientId, vec2 Pos, float Size, vec2 Shift, ColorRGBA Color)
+{
+	const int Slot = REMOTE_SLOT + ClientId;
+	if(!LoadSilhouette(Slot))
+		return false;
+	const CAnimState *pIdle = CAnimState::GetIdle();
+	const float AnimScale = Size / 64.0f;
+	const vec2 BodyPos = Pos + vec2(pIdle->GetBody()->m_X, pIdle->GetBody()->m_Y) * AnimScale;
+	DrawSilhouette(Slot, pIdle, Pos, BodyPos, Size, 0.0f, 1.0f, Shift, Color);
+	Graphics()->QuadsSetRotation(0.0f);
+	return true;
+}

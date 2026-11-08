@@ -151,10 +151,12 @@ void CGameClient::OnConsoleInit()
 					      &m_Ghost,
 					      &m_FogTrails, // afterimages behind the tees
 					      &m_FogFxBack, // reflections, shadows, footprints, dust (and the fx simulation)
+					      &m_FogLightingBack, // ambient occlusion, light shafts, rim light
 					      &m_Players,
 					      &m_MapLayersForeground,
 					      &m_FogLyricsFront, // lyrics above everything (fog_lyrics_layer 1)
 					      &m_FogAtmosphereFront, // thin mist in front, clear around you
+					      &m_FogLightingFront, // dynamic lights with tile shadows, wall shadows, freeze shimmer, glows
 					      &m_FogFxFront, // weather, time of day, flashlight, frost, thoughts, confetti
 					      &m_Particles.m_RenderExplosions,
 					      &m_NamePlates,

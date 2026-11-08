@@ -4349,3 +4349,52 @@ March 8
 
 Font of the game
 == Шрифт игры
+
+
+Light and shadow
+== Свет и тени
+
+Dynamic lights with shadows
+== Динамический свет и тени
+
+Darkness outside the light
+== Темнота вне света
+
+Light strength
+== Сила света
+
+Light reach
+== Дальность света
+
+Ambient occlusion
+== Ambient occlusion
+
+Occlusion strength
+== Сила затенения
+
+Light shafts from above
+== Лучи света сверху
+
+Shaft strength
+== Сила лучей
+
+Tee shadows on walls
+== Тени тишек на стенах
+
+Glow and detail
+== Свечение и детали
+
+Glow only on light sources
+== Свечение только у источников
+
+Rim light on tees
+== Контровой свет на тишках
+
+Shimmer over freeze and death
+== Мерцание над фризом и смертью
+
+Blurred far background
+== Размытый дальний фон
+
+Background blur
+== Размытие фона

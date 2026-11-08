@@ -82,6 +82,8 @@ public:
 	// a catalogue picture: glow and silhouette in the default colours
 	void DrawIcon(int Def, vec2 Center, float Size, float Alpha);
 
+	// a white silhouette of any player's tee (rim light, effects); false while the skin is missing
+	bool DrawPlayerSilhouette(int ClientId, vec2 Pos, float Size, vec2 Shift, ColorRGBA Color);
 	// other Fog players: their look from the presence server; slot = REMOTE_SLOT + client id
 	enum
 	{
