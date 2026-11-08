@@ -103,6 +103,7 @@ public:
 	bool DoRender(const CRenderLayerParams &Params) override;
 	bool IsValid() const override { return m_pGroup != nullptr; }
 	bool IsGroup() const override { return true; }
+	int ParallaxMax() const { return m_pGroup ? std::max(m_pGroup->m_ParallaxX, m_pGroup->m_ParallaxY) : 100; }
 	void Unload() override {}
 	void InitCallback() const override;
 

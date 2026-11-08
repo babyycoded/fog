@@ -1,5 +1,8 @@
 #include "map_renderer.h"
 
+#include <engine/shared/config.h>
+#include <engine/shared/fog_marks.h>
+
 #include <base/dbg.h>
 #include <base/log.h>
 
@@ -156,8 +159,30 @@ void CMapRenderer::Render(const CRenderLayerParams &Params)
 	CScreenRect ScreenRect = Graphics()->GetScreen();
 
 	bool DoRenderGroup = true;
+	// Fog depth of field: everything drawn before the first near group (parallax 100) is the far
+	// background; mark it in alpha so the post pass can soften just that
+	const bool MarkBackground = g_Config.m_FogDof && Params.m_RenderType == ERenderType::RENDERTYPE_BACKGROUND;
+	bool BackgroundMarked = false;
+	const auto DrawBackgroundMark = [&]() {
+		Graphics()->ClipDisable();
+		const CScreenRect Old = Graphics()->GetScreen();
+		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, 1.0f, 1.0f));
+		Graphics()->BlendFogWorldMask();
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(0.0f, 0.0f, 0.0f, 1.0f); // alpha -> 0
+		IGraphics::CQuadItem Full(0.0f, 0.0f, 1.0f, 1.0f);
+		Graphics()->QuadsDrawTL(&Full, 1);
+		Graphics()->QuadsEnd();
+		Graphics()->BlendNormal();
+		Graphics()->MapScreen(Old);
+		g_FogFrameMarks |= FOG_MARK_BACKGROUND;
+		BackgroundMarked = true;
+	};
 	for(auto &pRenderLayer : m_vpRenderLayers)
 	{
+		if(pRenderLayer->IsGroup() && MarkBackground && !BackgroundMarked && static_cast<CRenderLayerGroup *>(pRenderLayer.get())->ParallaxMax() >= 100)
+			DrawBackgroundMark();
 		if(pRenderLayer->IsGroup())
 			DoRenderGroup = pRenderLayer->DoRender(Params);
 
@@ -167,6 +192,9 @@ void CMapRenderer::Render(const CRenderLayerParams &Params)
 		if(pRenderLayer->DoRender(Params))
 			pRenderLayer->Render(Params);
 	}
+
+	if(MarkBackground && !BackgroundMarked)
+		DrawBackgroundMark();
 
 	// Reset clip from last group
 	Graphics()->ClipDisable();

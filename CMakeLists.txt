@@ -3276,6 +3276,7 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   fifo.h
   filecollection.cpp
   filecollection.h
+  fog_marks.h
   global_uuid_manager.cpp
   host_lookup.cpp
   host_lookup.h

@@ -15,6 +15,7 @@ layout(push_constant) uniform SPostParams
 	vec4 gLens; // vignette, chromatic aberration px, grain, sharpen
 	vec4 gStyle; // scanlines, fog haze, posterize levels (0 off), pixelate px (0 off)
 	vec4 gFilter; // colour filter rgb, amount
+	vec4 gDepth; // background blur radius px, background marked
 } gParams;
 
 layout(location = 0) noperspective in vec2 vUV;
@@ -72,6 +73,31 @@ void main()
 	}
 	else
 		Col = SampleScene(UV);
+
+	// depth of field: soften the far background (alpha 0 there, see FOG_MARK_BACKGROUND) by
+	// gathering only background samples, so nearer things never bleed into the blur
+	if(gParams.gDepth.y > 0.5)
+	{
+		float Here = texture(gScene, UV).a;
+		float Far = 1.0 - smoothstep(0.0, 0.06, Here);
+		if(Far > 0.0)
+		{
+			vec3 Sum = Col;
+			float WeightSum = 1.0;
+			const int TAPS = 16;
+			float Rotation = 6.2831853 * fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+			for(int i = 0; i < TAPS; i++)
+			{
+				float R = sqrt((float(i) + 0.5) / float(TAPS));
+				float A = float(i) * 2.3999632 + Rotation;
+				vec4 S = texture(gScene, UV + vec2(cos(A), sin(A)) * R * gParams.gDepth.x * Px);
+				float W = 1.0 - smoothstep(0.0, 0.06, S.a);
+				Sum += S.rgb * W;
+				WeightSum += W;
+			}
+			Col = mix(Col, Sum / WeightSum, Far);
+		}
+	}
 
 	// sharpen: unsharp mask against the 4 neighbours
 	if(gParams.gLens.w > 0.0)
@@ -196,8 +222,8 @@ void main()
 		float Alpha = texture(gScene, vUV).a;
 		// how much of the pixel is interface, for the picture; and a strict flag: anything the
 		// interface touched at all (fading menus too) is neither blurred nor kept in the history
-		float Interface = smoothstep(0.03, 0.12, Alpha);
-		float Touched = step(0.01, Alpha);
+		float Interface = smoothstep(0.2, 0.3, Alpha);
+		float Touched = step(0.17, Alpha);
 		// where interface was last frame the history is stale: start this pixel's trail fresh
 		float PixelBlend = Blend * (1.0 - step(0.5, PrevAll.a)) * (1.0 - Touched);
 		// the history is 8-bit: at high frame rates the per-frame step towards the new picture is

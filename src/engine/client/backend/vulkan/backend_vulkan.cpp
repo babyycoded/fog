@@ -13,6 +13,7 @@
 #include <engine/gfx/image_manipulation.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
+#include <engine/shared/fog_marks.h>
 #include <engine/shared/localization.h>
 #include <engine/storage.h>
 
@@ -984,9 +985,9 @@ private:
 		float m_aLens[4];
 		float m_aStyle[4];
 		float m_aFilter[4];
+		float m_aDepth[4]; // background blur radius px, background marked
 	};
 	bool m_PostEnabled = false;
-	std::atomic<bool> m_FogWorldMarked{false}; // the world mask was drawn this frame
 	std::vector<SPostImage> m_vPostSceneImages;
 	std::vector<SPostImage> m_vPostHistoryImages;
 	std::vector<bool> m_vPostHistoryWritten;
@@ -3259,7 +3260,6 @@ protected:
 		case EBlendMode::ADDITIVE:
 			return VULKAN_BACKEND_BLEND_MODE_ADDITATIVE;
 		case EBlendMode::FOG_WORLD_MASK:
-			m_FogWorldMarked = true;
 			return VULKAN_BACKEND_BLEND_MODE_FOG_WORLD_MASK;
 		default:
 			dbg_assert_failed("Invalid blend mode: %d", (int)State.m_BlendMode);
@@ -4958,7 +4958,8 @@ public:
 		m_PostLastTime = Now;
 
 		float Blend = 0.0f;
-		const bool WorldMarked = m_FogWorldMarked.exchange(false);
+		const int Marks = g_FogFrameMarks.exchange(0);
+		const bool WorldMarked = (Marks & FOG_MARK_WORLD) != 0;
 		if(g_Config.m_FogMotionBlur && HaveHistory && WorldMarked && g_Config.m_FogMotionBlurStrength > 0)
 		{
 			// frame-rate independent: the trail fades with a time constant, not per frame
@@ -4975,6 +4976,15 @@ public:
 		Push.m_aColor[1] = 1.0f;
 		Push.m_aColor[2] = 1.0f;
 		Push.m_aColor[3] = 1.0f;
+		// the background blur is a graphics toggle, independent of the live shaders
+		{
+			const float DofScale = Extent.height / 1080.0f;
+			if(g_Config.m_FogDof && (Marks & FOG_MARK_BACKGROUND))
+			{
+				Push.m_aDepth[0] = 5.0f * g_Config.m_FogDofStrength / 100.0f * DofScale;
+				Push.m_aDepth[1] = 1.0f;
+			}
+		}
 		if(!g_Config.m_FogFxLive)
 			return Push;
 
@@ -5260,7 +5270,7 @@ public:
 			ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
 			ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
 			ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-			ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; // alpha *= 1 - quad alpha
 		}
 
 		VkPipelineLayoutCreateInfo PipelineLayoutInfo{};

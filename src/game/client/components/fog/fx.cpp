@@ -10,6 +10,7 @@
 #include <engine/graphics.h>
 #include <engine/image.h>
 #include <engine/shared/config.h>
+#include <engine/shared/fog_marks.h>
 #include <engine/textrender.h>
 
 #include <game/client/animstate.h>
@@ -1276,10 +1277,12 @@ void CFogWorldMark::OnRender()
 		return;
 	const CScreenRect OldScreen = Graphics()->GetScreen();
 	Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, 1.0f, 1.0f));
+	// scale the alpha down (world = small, background = 0); the interface drawn after raises it
+	g_FogFrameMarks |= FOG_MARK_WORLD;
 	Graphics()->BlendFogWorldMask();
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
-	Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.0f);
+	Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.85f);
 	IGraphics::CQuadItem Full(0.0f, 0.0f, 1.0f, 1.0f);
 	Graphics()->QuadsDrawTL(&Full, 1);
 	Graphics()->QuadsEnd();
