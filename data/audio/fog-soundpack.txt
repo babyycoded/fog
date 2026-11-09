@@ -1,5 +1,0 @@
-Fog default sounds
-
-85 of the game sounds in this folder (hook, weapons, pickups, foley, chat and
-CTF sounds) come from the "Better soundpack" by Mezumi. The remaining files
-are the stock DDNet / Teeworlds sounds.
