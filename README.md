@@ -1,3 +1,37 @@
+# Fog
+
+**Fog** is a client for [DDNet](https://ddnet.org) with a reworked interface and a quiet, misty look. It plays on regular DDNet servers.
+
+**Version:** 1.0.0 Public Beta. Expect bugs.
+
+## Download
+
+Builds for Linux and Windows are on the [Releases](https://github.com/babyycoded/fog/releases) page.
+
+## What it adds
+
+- A new glass interface: start screen, menus, server browser with difficulty, category and team filters
+- 26 shader presets, light shafts, ambient occlusion, reflections, soft shadows, depth of field, motion blur, map fog, weather, day cycle
+- Trails (Sandevistan, glitch, phantom, fog, custom colours)
+- Tee studio: colour animation, patterns, auras, outlines, full-range colours, accessories, dummy sync
+- Other Fog players see your name style, Fog mark and studio look
+- Synced lyrics from the music you play (MPRIS), now playing widget
+- Drag and drop: drop a PNG onto the window and Fog puts it where it belongs (skin, game skin, emoticons, particles, HUD, entities)
+- Crosshairs, menu cursors, sound packs, holidays, Fog clips, smooth katana, fast input, and more
+
+## Notes
+
+- Fog is a third-party client. It is not affiliated with or endorsed by DDNet.
+- It does not give gameplay advantages beyond what the settings describe. Play fair and follow server rules.
+- The presence service (`fog_presence`) sends your in-game name, the server you are on, a random Fog ID and your Fog style (name style, mark, studio look) to the Fog presence server, so other Fog players on the same server can see your look. Nothing else is sent. Turn it off in the settings if you do not want that.
+- Fog is built on DDNet and keeps its licence (see `license.txt`). Fonts are under the SIL Open Font License, see `data/fonts/display/licenses`.
+
+## Building
+
+Fog builds the same way as DDNet, see the original instructions below and [docs/BUILDING.md](docs/BUILDING.md).
+
+---
+
 [![DDraceNetwork](https://ddnet.org/ddnet-small.png)](https://ddnet.org)
 
 [![Build status](https://github.com/ddnet/ddnet/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/ddnet/ddnet/actions/workflows/build.yml?branch=master)

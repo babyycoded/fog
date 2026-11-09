@@ -11,6 +11,10 @@ penguin, random, veteran, voodoo_tee, whis:
 Copyright Whis
 CC-BY license
 
+whis_fog:
+Based on "whis", Copyright Whis, CC-BY license.
+Modified for the Fog client (stripes and watermark removed, softer shading).
+
 coala_bluekitty, coala_bluestripe, coala_cammo, coala_cammostripes,
 coala_default, coala_limekitty, coala_pinky, coala_redbopp, coala_redstripe,
 coala_saddo, coala_toptri, coala_twinbop, coala_twintri, coala_warpaint,
