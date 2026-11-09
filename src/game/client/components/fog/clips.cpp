@@ -4,6 +4,7 @@
 
 #include "glass.h"
 
+#include <base/detect.h>
 #include <base/io.h>
 #include <base/str.h>
 #include <base/time.h>
@@ -198,7 +199,11 @@ void CMenus::RenderFogClips(CUIRect MainView)
 		char aDate[64], aMeta[128];
 		std::tm Local{};
 		const time_t Time = Clip.m_Time;
+#if defined(CONF_FAMILY_WINDOWS)
+		localtime_s(&Local, &Time);
+#else
 		localtime_r(&Time, &Local);
+#endif
 		std::strftime(aDate, sizeof(aDate), "%d.%m.%Y %H:%M", &Local);
 		str_format(aMeta, sizeof(aMeta), "%s, %.1f MB", aDate, Clip.m_Size / (1024.0 * 1024.0));
 		FogLabel(Ui(), TextRender(), Meta, aMeta, 11.0f, TEXTALIGN_ML, DIM, "Manrope", 600);

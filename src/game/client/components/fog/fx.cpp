@@ -2,6 +2,7 @@
 
 #include "glass.h"
 
+#include <base/detect.h>
 #include <base/dbg.h>
 #include <base/math.h>
 #include <base/str.h>
@@ -129,7 +130,11 @@ void DayPhase(float &Light, float &SunSide, ColorRGBA &Tint)
 {
 	const time_t Now = time(nullptr);
 	std::tm Local{};
+#if defined(CONF_FAMILY_WINDOWS)
+	localtime_s(&Local, &Now);
+#else
 	localtime_r(&Now, &Local);
+#endif
 	const float h = Local.tm_hour + Local.tm_min / 60.0f;
 	SunSide = std::clamp((h - 13.0f) / 6.0f, -1.0f, 1.0f);
 	struct SKey
@@ -172,7 +177,11 @@ int CurrentHoliday(bool &NewYearNight)
 {
 	const time_t Now = time(nullptr);
 	std::tm Local{};
+#if defined(CONF_FAMILY_WINDOWS)
+	localtime_s(&Local, &Now);
+#else
 	localtime_r(&Now, &Local);
+#endif
 	const int m = Local.tm_mon + 1, d = Local.tm_mday, h = Local.tm_hour;
 	NewYearNight = (m == 12 && d == 31 && h >= 18) || (m == 1 && d == 1 && h < 3);
 	if(g_Config.m_FogHolidayPreview)
