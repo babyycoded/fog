@@ -2484,7 +2484,7 @@ void CMenus::OnRender()
 
 	Ui()->StartCheck();
 	UpdateColors();
-	// experimental Fog glass for every menu rect, only while the menu draws
+	// Fog glass for every menu rect, only while the menu draws
 	FogGlassInit(Graphics());
 	CUIRect::ms_pfnDrawHook = g_Config.m_FogUi && g_Config.m_FogUiMenus ? FogMenuRectHook : nullptr;
 

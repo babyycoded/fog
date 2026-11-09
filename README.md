@@ -107,7 +107,7 @@ Open an [issue](https://github.com/babyycoded/fog/issues) or write in [@fogclien
 
 - Fog is a third-party client. It is not affiliated with or endorsed by the DDNet team.
 - This is a public beta: expect bugs.
-- Fog is built on DDNet and keeps its licence (see `license.txt`). Fonts are under the SIL Open Font License, see `data/fonts/display/licenses`. The `whis_fog` skin is based on "whis" by Whis (CC-BY).
+- Fog is built on DDNet and keeps its licence (see `license.txt`). Fonts are under the SIL Open Font License, see `data/fonts/display/licenses`. The `whis_fog` skin is based on "whis" by Whis (CC-BY). The default sounds include the "Better soundpack" by Mezumi.
 - Building works the same way as for DDNet; the original DDNet readme follows below.
 
 ---

@@ -17,7 +17,7 @@ ColorRGBA FogGlassTint();
 void FogGlassInit(IGraphics *pGraphics);
 // True while the Fog menu redesign is drawing (the glass hook is installed).
 bool FogMenusActive();
-// CUIRect::Draw hook that turns every menu rect into glass (experimental fog_ui_menus).
+// CUIRect::Draw hook that turns every menu rect into glass (fog_ui_menus).
 bool FogMenuRectHook(const CUIRect &Rect, const ColorRGBA &Color, int Corners, float Rounding);
 // Mist over the menu background map: a cold gradient and slow drifting fog banks.
 void FogDrawMenuAtmosphere(IGraphics *pGraphics, const CUIRect &Screen, float Time);

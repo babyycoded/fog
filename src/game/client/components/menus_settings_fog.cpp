@@ -491,7 +491,7 @@ void CMenus::RenderSettingsFogVisuals(CUIRect MainView, int Section)
 
 		Gap(LeftColumn);
 		Headline(LeftColumn, Localize("Glass panels"));
-		CheckBox(LeftColumn, &g_Config.m_FogUiMenus, Localize("Fog glass for the whole menu (experimental)"));
+		CheckBox(LeftColumn, &g_Config.m_FogUiMenus, Localize("Fog glass for the whole menu"));
 		CheckBox(LeftColumn, &g_Config.m_FogHud, Localize("Fog HUD: timer, checkpoints and finish"));
 		Slider(LeftColumn, &g_Config.m_FogUiSheen, Localize("Light on the glass"), 0, 100, "%");
 		ColorLine(LeftColumn, &s_GlassTintReset, Localize("Glass tint"), &g_Config.m_FogUiTint, DefaultConfig::FogUiTint, true);

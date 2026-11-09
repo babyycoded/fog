@@ -2973,8 +2973,8 @@ Time between copies
 Trails
 == Трейлы
 
-Fog glass for the whole menu (experimental)
-== Стеклянное меню целиком (тест)
+Fog glass for the whole menu
+== Стеклянное меню целиком
 
 Add friends in the server browser
 == Добавь друзей в браузере серверов

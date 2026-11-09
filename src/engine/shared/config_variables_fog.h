@@ -3,7 +3,7 @@
 // Interface
 MACRO_CONFIG_INT(FogUi, fog_ui, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the Fog glass look for client panels")
 MACRO_CONFIG_COL(FogUiTint, fog_ui_tint, 2358975792, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Tint and opacity of Fog glass panels")
-MACRO_CONFIG_INT(FogUiMenus, fog_ui_menus, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Experimental: restyle the whole menu (all panels, buttons and tabs) as Fog glass")
+MACRO_CONFIG_INT(FogUiMenus, fog_ui_menus, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Restyle the whole menu (all panels, buttons and tabs) as Fog glass")
 MACRO_CONFIG_INT(FogUiSheen, fog_ui_sheen, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the light sheen on glass panels")
 
 // Animation
