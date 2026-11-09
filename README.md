@@ -1,34 +1,114 @@
-# Fog
+<p align="center">
+  <img src="docs/fog/banner.jpg" alt="Fog, a quiet client for DDNet" width="100%">
+</p>
 
-**Fog** is a client for [DDNet](https://ddnet.org) with a reworked interface and a quiet, misty look. It plays on regular DDNet servers.
+<p align="center">
+  <a href="https://github.com/babyycoded/fog/releases/tag/v1.0.0-beta"><img alt="Release" src="https://img.shields.io/github/v/release/babyycoded/fog?include_prereleases&style=flat-square&label=release&color=B5A8CC&labelColor=101317"></a>
+  <a href="https://github.com/babyycoded/fog/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/babyycoded/fog/total?style=flat-square&label=downloads&color=8FC9C3&labelColor=101317"></a>
+  <a href="https://t.me/fogclient_tw"><img alt="Telegram" src="https://img.shields.io/badge/telegram-@fogclient__tw-E8EBEF?style=flat-square&logo=telegram&logoColor=E8EBEF&labelColor=101317"></a>
+  <a href="https://github.com/babyycoded/fog/actions/workflows/fog-release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/babyycoded/fog/fog-release.yml?style=flat-square&label=build&labelColor=101317"></a>
+</p>
 
-**Version:** 1.0.0 Public Beta. Expect bugs.
+Fog is a client for [DDNet](https://ddnet.org) with a reworked interface and a quiet, misty look. It connects to the same servers as DDNet and keeps all of its gameplay.
 
 ## Download
 
-Builds for Linux and Windows are on the [Releases](https://github.com/babyycoded/fog/releases) page.
+| System | File | |
+| --- | --- | --- |
+| Windows 10/11, 64-bit | [Fog-1.0.0-beta-win64.zip](https://github.com/babyycoded/fog/releases/download/v1.0.0-beta/Fog-1.0.0-beta-win64.zip) | Unpack, run `DDNet.exe` |
+| Linux, x86_64 | [Fog-1.0.0-beta-linux_x86_64.tar.xz](https://github.com/babyycoded/fog/releases/download/v1.0.0-beta/Fog-1.0.0-beta-linux_x86_64.tar.xz) | Unpack, run `./DDNet` |
 
-## What it adds
+Updates and release notes come out first in the Telegram channel [@fogclient_tw](https://t.me/fogclient_tw). The 38-second trailer is attached to the release: [Fog-trailer.mp4](https://github.com/babyycoded/fog/releases/download/v1.0.0-beta/Fog-trailer.mp4).
 
-- A new glass interface: start screen, menus, server browser with difficulty, category and team filters
-- 26 shader presets, light shafts, ambient occlusion, reflections, soft shadows, depth of field, motion blur, map fog, weather, day cycle
-- Trails (Sandevistan, glitch, phantom, fog, custom colours)
-- Tee studio: colour animation, patterns, auras, outlines, full-range colours, accessories, dummy sync
-- Other Fog players see your name style, Fog mark and studio look
-- Synced lyrics from the music you play (MPRIS), now playing widget
-- Drag and drop: drop a PNG onto the window and Fog puts it where it belongs (skin, game skin, emoticons, particles, HUD, entities)
-- Crosshairs, menu cursors, sound packs, holidays, Fog clips, smooth katana, fast input, and more
+## The same moment in DDNet and in Fog
+
+<p align="center">
+  <img src="docs/fog/same-moment.jpg" alt="The same jump on Linear: plain DDNet on the left, Fog with its mist and a trail on the right" width="100%">
+</p>
+
+Both frames come from one demo, played back once in DDNet and once in Fog with its default look.
+
+## A look around
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/fog/start-screen.jpg" alt="Start screen"><br><b>Start screen.</b> Your tee, what you are listening to, and the last server one click away.</td>
+    <td width="50%"><img src="docs/fog/server-browser.jpg" alt="Server browser"><br><b>Server browser.</b> Filter maps by difficulty, category and team size.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/fog/tee-studio.jpg" alt="Tee studio"><br><b>Tee studio.</b> Colour animation, patterns, auras, outlines and 16 accessories.</td>
+    <td><img src="docs/fog/synced-looks.jpg" alt="Two Fog players"><br><b>Seen by other Fog players.</b> Your name style, Fog mark and studio look show up for them too.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/fog/shaders.jpg" alt="Night vision and Comic shader presets"><br><b>26 shader presets.</b> Night vision and Comic here, applied live in game.</td>
+    <td><img src="docs/fog/settings.jpg" alt="Fog settings"><br><b>Settings.</b> Every Fog feature has its own switch and sliders.</td>
+  </tr>
+</table>
+
+<details>
+<summary><b>Everything Fog adds</b></summary>
+
+**Interface**
+- Glass interface for the menus, start screen, Esc menu and settings
+- Server browser filters: difficulty, category, players needed to finish
+- Live menu backgrounds: fog, aurora, rain on glass, the deep, ember dusk
+- Race HUD with checkpoint and finish moments, ping above names
+- Menu cursors and Fog crosshairs with shape, size, gap and colour
+- Drag and drop: drop a PNG onto the window and Fog asks whether it is a skin, game skin, emoticons, particles, HUD or entities, then puts it in place
+
+**Graphics**
+- 26 shader presets, plus bloom, grain, vignette, chromatic aberration, scanlines, pixelate and more
+- Light shafts, ambient occlusion, rim light, wall shadows, soft shadows, reflections in the floor
+- Depth of field for far background layers, motion blur
+- Map fog that drifts at its own depth, a thin mist in front of the tees
+- Weather (rain, snow, ash, pollen), day cycle by your clock, flashlight mode
+- Fog versions of the standard tilesets, map tint toward the Fog palette
+- Footprints, landing dust, wind lines, hook sparks, death ash, frost on frozen tees, finish confetti
+
+**Your tee**
+- Trails: Sandevistan, fog, glitch, phantom or your own colours
+- Tee studio: breathing colours, gradients, rainbow, 9 patterns (or your own image), 6 auras, outlines
+- Full-range custom colours, black included
+- 16 accessories with their own animation
+- Dummy sync: the dummy copies your look, or wears it inverted
+- Name styles for other Fog players: shimmer, gradient, rainbow, pulse, wave
+
+**Music**
+- Reads the current track from Spotify and other players (MPRIS, Linux)
+- Synced lyrics from LRCLIB, floating next to you or left in the map as you run
+- Now playing widget, fog and auras that breathe with the music
+
+**Play**
+- Smooth katana: the ninja dash is predicted on your side, so it glides
+- Fast input: your newest tick is predicted with the live input (about one tick less delay)
+- Fog clips, sound packs, holidays (New Year, Halloween, Valentine's Day, March 8)
+</details>
+
+<details>
+<summary><b>Questions</b></summary>
+
+**Can I use Fog on DDNet servers?**
+Yes. Fog is a DDNet client with visual and interface changes. It does not change what you send to the server beyond normal input. Follow each server's rules.
+
+**Will it touch my DDNet settings?**
+Fog uses the same settings folder as DDNet, so your binds, skins and servers carry over. Fog's own settings start with `fog_`. Back up `settings_ddnet.cfg` first if you switch between clients often.
+
+**What does Fog send over the internet?**
+Besides normal DDNet traffic: lyrics lookups go to lrclib.net, and the presence service sends your in-game name, the server you are on, a random Fog ID and your Fog style, so other Fog players can see your look. Turn it off with `fog_presence 0`.
+
+**Linux: it does not start.**
+The Linux build uses your system libraries. Install SDL2, FreeType, libpng, curl, FFmpeg and the Vulkan loader with your package manager, then run `./DDNet` from the unpacked folder.
+
+**Where do I report a bug?**
+Open an [issue](https://github.com/babyycoded/fog/issues) or write in [@fogclient_tw](https://t.me/fogclient_tw). Mention your system and what you did before it happened.
+</details>
 
 ## Notes
 
-- Fog is a third-party client. It is not affiliated with or endorsed by DDNet.
-- It does not give gameplay advantages beyond what the settings describe. Play fair and follow server rules.
-- The presence service (`fog_presence`) sends your in-game name, the server you are on, a random Fog ID and your Fog style (name style, mark, studio look) to the Fog presence server, so other Fog players on the same server can see your look. Nothing else is sent. Turn it off in the settings if you do not want that.
-- Fog is built on DDNet and keeps its licence (see `license.txt`). Fonts are under the SIL Open Font License, see `data/fonts/display/licenses`.
-
-## Building
-
-Fog builds the same way as DDNet, see the original instructions below and [docs/BUILDING.md](docs/BUILDING.md).
+- Fog is a third-party client. It is not affiliated with or endorsed by the DDNet team.
+- This is a public beta: expect bugs.
+- Fog is built on DDNet and keeps its licence (see `license.txt`). Fonts are under the SIL Open Font License, see `data/fonts/display/licenses`. The `whis_fog` skin is based on "whis" by Whis (CC-BY).
+- Building works the same way as for DDNet; the original DDNet readme follows below.
 
 ---
 
