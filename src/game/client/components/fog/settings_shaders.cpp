@@ -207,7 +207,7 @@ void CMenus::RenderSettingsShaders(CUIRect MainView)
 		Left.HSplitTop(10.0f, nullptr, &Left);
 
 		Left.HSplitTop(20.0f, &Row, &Left);
-		if(DoButton_CheckBox(&g_Config.m_FogMotionBlur, Localize("Motion blur: the world, HUD, cursor and menus"), g_Config.m_FogMotionBlur, &Row))
+		if(DoButton_CheckBox(&g_Config.m_FogMotionBlur, Localize("Motion blur (frame blending)"), g_Config.m_FogMotionBlur, &Row))
 			g_Config.m_FogMotionBlur ^= 1;
 		Left.HSplitTop(2.0f, nullptr, &Left);
 		Left.HSplitTop(20.0f, &Row, &Left);

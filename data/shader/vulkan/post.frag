@@ -4,7 +4,8 @@
 // Fog client: live post-process. Everything is driven by push constants so every
 // effect can change per frame without rebuilding anything.
 layout(set = 0, binding = 0) uniform sampler2D gScene;
-layout(set = 1, binding = 0) uniform sampler2D gHistory;
+layout(set = 1, binding = 0) uniform sampler2D gHistory; // first smoothing stage, alpha = interface flag
+layout(set = 2, binding = 0) uniform sampler2D gHistory2; // second smoothing stage
 
 layout(push_constant) uniform SPostParams
 {
@@ -21,6 +22,7 @@ layout(push_constant) uniform SPostParams
 layout(location = 0) noperspective in vec2 vUV;
 layout(location = 0) out vec4 FragOut;
 layout(location = 1) out vec4 HistoryOut;
+layout(location = 2) out vec4 History2Out;
 
 float Luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
@@ -38,6 +40,15 @@ float Bayer(vec2 FragCoord)
 	const float M[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 	ivec2 i = ivec2(mod(FragCoord, 4.0));
 	return M[i.y * 4 + i.x] / 16.0 - 0.5;
+}
+
+// one smoothing step from Prev towards Target, keeping Keep of the old value
+vec3 Settle(vec3 Prev, vec3 Target, float Keep)
+{
+	vec3 Diff = Target - Prev;
+	vec3 Step = Diff * (1.0 - Keep);
+	Step = sign(Diff) * max(abs(Step), min(abs(Diff), vec3(0.25 / 255.0)));
+	return Prev + Step;
 }
 
 vec3 SampleScene(vec2 uv)
@@ -211,14 +222,16 @@ void main()
 	// everything after (HUD, menus, cursor) raises it again, so alpha says how much is interface.
 	// The interface stays crisp and the history keeps only the world, so a closed menu leaves no
 	// ghost behind.
-	vec4 PrevAll = texture(gHistory, vUV);
-	vec3 Prev = PrevAll.rgb;
 	float Blend = gParams.gScreen.w;
 	vec3 Out = Col;
 	vec3 History = Col;
+	vec3 History2 = Col;
 	float WasInterface = 0.0;
 	if(Blend > 0.0)
 	{
+		// the last frame is only read while motion blur is on: a full-screen read saved otherwise
+		vec4 PrevAll = texture(gHistory, vUV);
+		vec3 Prev2 = texture(gHistory2, vUV).rgb;
 		float Alpha = texture(gScene, vUV).a;
 		// how much of the pixel is interface, for the picture; and a strict flag: anything the
 		// interface touched at all (fading menus too) is neither blurred nor kept in the history
@@ -226,17 +239,18 @@ void main()
 		float Touched = step(0.17, Alpha);
 		// where interface was last frame the history is stale: start this pixel's trail fresh
 		float PixelBlend = Blend * (1.0 - step(0.5, PrevAll.a)) * (1.0 - Touched);
-		// the history is 8-bit: at high frame rates the per-frame step towards the new picture is
-		// smaller than one level and the trail would freeze forever (ghosts of old screens), so
-		// always move at least a level and a half
-		vec3 Diff = Col - Prev;
-		vec3 Step = Diff * (1.0 - PixelBlend);
-		Step = sign(Diff) * max(abs(Step), min(abs(Diff), vec3(1.5 / 255.0)));
-		vec3 World = Prev + Step;
-		Out = mix(World, Col, Interface);
-		History = World;
+		// frame blending like a video render: the frame is smoothed twice in a row, so recent
+		// frames weigh about evenly and old ones drop off (a soft shutter, not a comet tail).
+		// The histories are half floats; the tiny minimum step only makes sure the last fraction
+		// of a level near white, below half-float precision, still settles instead of lingering.
+		vec3 Stage1 = Settle(PrevAll.rgb, Col, PixelBlend);
+		vec3 Stage2 = Settle(Prev2, Stage1, PixelBlend);
+		Out = mix(Stage2, Col, Interface);
+		History = Stage1;
+		History2 = Stage2;
 		WasInterface = Touched;
 	}
 	HistoryOut = vec4(History, WasInterface);
+	History2Out = vec4(History2, 1.0);
 	FragOut = vec4(Out, 1.0);
 }

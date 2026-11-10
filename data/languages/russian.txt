@@ -3237,8 +3237,8 @@ Effects on
 Toggle key
 == Клавиша вкл/выкл
 
-Motion blur: the world, HUD, cursor and menus
-== Motion blur: мир, HUD, прицел и меню
+Motion blur (frame blending)
+== Motion blur (смешивание кадров)
 
 Strength
 == Сила

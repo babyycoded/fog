@@ -989,12 +989,16 @@ private:
 	};
 	bool m_PostEnabled = false;
 	std::vector<SPostImage> m_vPostSceneImages;
+	// motion blur keeps two float histories: the frame is smoothed twice in a row, which weighs
+	// the recent frames like a soft shutter instead of a comet tail (see post.frag)
 	std::vector<SPostImage> m_vPostHistoryImages;
+	std::vector<SPostImage> m_vPostHistory2Images;
 	std::vector<bool> m_vPostHistoryWritten;
 	std::vector<VkFramebuffer> m_vPostFramebuffers;
 	VkRenderPass m_VKPostRenderPass = VK_NULL_HANDLE;
 	VkPipelineLayout m_PostPipeLayout = VK_NULL_HANDLE;
 	VkPipeline m_PostPipeline = VK_NULL_HANDLE;
+	VkPipeline m_PostPipelineNoHistory = VK_NULL_HANDLE; // the same without writing the history (motion blur off)
 	VkDescriptorPool m_PostDescrPool = VK_NULL_HANDLE;
 	VkSampler m_PostSampler = VK_NULL_HANDLE;
 	int64_t m_PostLastTime = 0;
@@ -4688,12 +4692,15 @@ public:
 	 * FOG POST-PROCESS
 	 ************************/
 
-	[[nodiscard]] bool CreatePostImage(SPostImage &Image)
+	// the history is accumulated over many frames: 8 bits would make the blend step in levels
+	static constexpr VkFormat POST_HISTORY_FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT;
+
+	[[nodiscard]] bool CreatePostImage(SPostImage &Image, VkFormat Format)
 	{
 		const auto &Extent = m_VKSwapImgAndViewportExtent.m_SwapImageViewport;
-		if(!CreateImage(Extent.width, Extent.height, 1, 1, m_VKSurfFormat.format, VK_IMAGE_TILING_OPTIMAL, Image.m_Image, Image.m_ImgMem, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT))
+		if(!CreateImage(Extent.width, Extent.height, 1, 1, Format, VK_IMAGE_TILING_OPTIMAL, Image.m_Image, Image.m_ImgMem, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT))
 			return false;
-		Image.m_ImgView = CreateImageView(Image.m_Image, m_VKSurfFormat.format, VK_IMAGE_VIEW_TYPE_2D, 1, 1);
+		Image.m_ImgView = CreateImageView(Image.m_Image, Format, VK_IMAGE_VIEW_TYPE_2D, 1, 1);
 		return Image.m_ImgView != VK_NULL_HANDLE;
 	}
 
@@ -4717,10 +4724,11 @@ public:
 			return true;
 		m_vPostSceneImages.resize(m_SwapChainImageCount);
 		m_vPostHistoryImages.resize(m_SwapChainImageCount);
+		m_vPostHistory2Images.resize(m_SwapChainImageCount);
 		m_vPostHistoryWritten.assign(m_SwapChainImageCount, false);
 		for(size_t i = 0; i < m_SwapChainImageCount; ++i)
 		{
-			if(!CreatePostImage(m_vPostSceneImages[i]) || !CreatePostImage(m_vPostHistoryImages[i]))
+			if(!CreatePostImage(m_vPostSceneImages[i], m_VKSurfFormat.format) || !CreatePostImage(m_vPostHistoryImages[i], POST_HISTORY_FORMAT) || !CreatePostImage(m_vPostHistory2Images[i], POST_HISTORY_FORMAT))
 			{
 				SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Creating the post-process images failed.");
 				return false;
@@ -4735,11 +4743,12 @@ public:
 		if(!m_PostEnabled)
 			return true;
 
-		// render pass: [0] swap chain image (presented), [1] history image (next frame's motion blur)
-		std::array<VkAttachmentDescription, 2> aAttachments{};
+		// render pass: [0] swap chain image (presented), [1] and [2] the two histories (next
+		// frame's motion blur)
+		std::array<VkAttachmentDescription, 3> aAttachments{};
 		for(auto &Attachment : aAttachments)
 		{
-			Attachment.format = m_VKSurfFormat.format;
+			Attachment.format = POST_HISTORY_FORMAT;
 			Attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			Attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			Attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -4747,12 +4756,15 @@ public:
 			Attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			Attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		}
+		aAttachments[0].format = m_VKSurfFormat.format;
 		aAttachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		aAttachments[1].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		aAttachments[2].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		std::array<VkAttachmentReference, 2> aRefs{};
+		std::array<VkAttachmentReference, 3> aRefs{};
 		aRefs[0] = {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 		aRefs[1] = {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+		aRefs[2] = {2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 		VkSubpassDescription Subpass{};
 		Subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 		Subpass.colorAttachmentCount = aRefs.size();
@@ -4792,7 +4804,7 @@ public:
 		m_vPostFramebuffers.resize(m_SwapChainImageCount);
 		for(size_t i = 0; i < m_SwapChainImageCount; ++i)
 		{
-			std::array<VkImageView, 2> aViews = {m_vSwapChainImageViewList[i], m_vPostHistoryImages[i].m_ImgView};
+			std::array<VkImageView, 3> aViews = {m_vSwapChainImageViewList[i], m_vPostHistoryImages[i].m_ImgView, m_vPostHistory2Images[i].m_ImgView};
 			VkFramebufferCreateInfo FramebufferInfo{};
 			FramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			FramebufferInfo.renderPass = m_VKPostRenderPass;
@@ -4814,12 +4826,12 @@ public:
 		// descriptors: one set per scene image and per history image
 		VkDescriptorPoolSize PoolSize{};
 		PoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		PoolSize.descriptorCount = m_SwapChainImageCount * 2;
+		PoolSize.descriptorCount = m_SwapChainImageCount * 3;
 		VkDescriptorPoolCreateInfo PoolInfo{};
 		PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		PoolInfo.poolSizeCount = 1;
 		PoolInfo.pPoolSizes = &PoolSize;
-		PoolInfo.maxSets = m_SwapChainImageCount * 2;
+		PoolInfo.maxSets = m_SwapChainImageCount * 3;
 		if(vkCreateDescriptorPool(m_VKDevice, &PoolInfo, nullptr, &m_PostDescrPool) != VK_SUCCESS)
 		{
 			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Creating the post-process descriptor pool failed.");
@@ -4850,14 +4862,14 @@ public:
 		};
 		for(size_t i = 0; i < m_SwapChainImageCount; ++i)
 		{
-			if(!AllocSet(m_vPostSceneImages[i]) || !AllocSet(m_vPostHistoryImages[i]))
+			if(!AllocSet(m_vPostSceneImages[i]) || !AllocSet(m_vPostHistoryImages[i]) || !AllocSet(m_vPostHistory2Images[i]))
 			{
 				SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Allocating the post-process descriptors failed.");
 				return false;
 			}
 		}
 
-		// pipeline: a full screen triangle, no vertex input, two colour outputs, no blending
+		// pipeline: a full screen triangle, no vertex input, three colour outputs, no blending
 		VkPipelineShaderStageCreateInfo aShaderStages[2];
 		SShaderModule Module;
 		if(!CreateShaders("shader/vulkan/post.vert.spv", "shader/vulkan/post.frag.spv", aShaderStages, Module))
@@ -4876,11 +4888,11 @@ public:
 		GetStandardPipelineInfo(InputAssembly, Viewport, Scissor, ViewportState, Rasterizer, Multisampling, ColorBlendAttachment, ColorBlending);
 		Multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 		ColorBlendAttachment.blendEnable = VK_FALSE;
-		std::array<VkPipelineColorBlendAttachmentState, 2> aBlendAttachments = {ColorBlendAttachment, ColorBlendAttachment};
+		std::array<VkPipelineColorBlendAttachmentState, 3> aBlendAttachments = {ColorBlendAttachment, ColorBlendAttachment, ColorBlendAttachment};
 		ColorBlending.attachmentCount = aBlendAttachments.size();
 		ColorBlending.pAttachments = aBlendAttachments.data();
 
-		std::array<VkDescriptorSetLayout, 2> aSetLayouts = {m_StandardTexturedDescriptorSetLayout, m_StandardTexturedDescriptorSetLayout};
+		std::array<VkDescriptorSetLayout, 3> aSetLayouts = {m_StandardTexturedDescriptorSetLayout, m_StandardTexturedDescriptorSetLayout, m_StandardTexturedDescriptorSetLayout};
 		VkPushConstantRange PushRange{};
 		PushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		PushRange.offset = 0;
@@ -4915,6 +4927,14 @@ public:
 			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Creating the post-process pipeline failed.");
 			return false;
 		}
+		// without motion blur nobody reads the history: skip writing a full-screen image every frame
+		aBlendAttachments[1].colorWriteMask = 0;
+		aBlendAttachments[2].colorWriteMask = 0;
+		if(vkCreateGraphicsPipelines(m_VKDevice, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &m_PostPipelineNoHistory) != VK_SUCCESS)
+		{
+			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Creating the post-process pipeline failed.");
+			return false;
+		}
 		m_PostLastTime = time_get();
 		return true;
 	}
@@ -4923,6 +4943,8 @@ public:
 	{
 		if(m_PostPipeline != VK_NULL_HANDLE)
 			vkDestroyPipeline(m_VKDevice, m_PostPipeline, nullptr);
+		if(m_PostPipelineNoHistory != VK_NULL_HANDLE)
+			vkDestroyPipeline(m_VKDevice, m_PostPipelineNoHistory, nullptr);
 		if(m_PostPipeLayout != VK_NULL_HANDLE)
 			vkDestroyPipelineLayout(m_VKDevice, m_PostPipeLayout, nullptr);
 		if(m_PostDescrPool != VK_NULL_HANDLE)
@@ -4937,7 +4959,10 @@ public:
 			DestroyPostImage(Image);
 		for(auto &Image : m_vPostHistoryImages)
 			DestroyPostImage(Image);
+		for(auto &Image : m_vPostHistory2Images)
+			DestroyPostImage(Image);
 		m_PostPipeline = VK_NULL_HANDLE;
+		m_PostPipelineNoHistory = VK_NULL_HANDLE;
 		m_PostPipeLayout = VK_NULL_HANDLE;
 		m_PostDescrPool = VK_NULL_HANDLE;
 		m_PostSampler = VK_NULL_HANDLE;
@@ -4945,6 +4970,7 @@ public:
 		m_vPostFramebuffers.clear();
 		m_vPostSceneImages.clear();
 		m_vPostHistoryImages.clear();
+		m_vPostHistory2Images.clear();
 		m_vPostHistoryWritten.clear();
 	}
 
@@ -4962,9 +4988,14 @@ public:
 		const bool WorldMarked = (Marks & FOG_MARK_WORLD) != 0;
 		if(g_Config.m_FogMotionBlur && HaveHistory && WorldMarked && g_Config.m_FogMotionBlurStrength > 0)
 		{
-			// frame-rate independent: the trail fades with a time constant, not per frame
-			const float Tau = g_Config.m_FogMotionBlurStrength / 100.0f * 0.012f;
-			Blend = std::min(std::exp(-Dt / Tau), 0.96f);
+			// frame blending like a video render (smoothie/Blur): 100% blends the frames of one
+			// 60 fps video frame. Two smoothing stages in a row, each with this time constant, have
+			// the spread of a box shutter of that length (variance W^2/12 = 2 Tau^2), so the trail
+			// is even instead of a sharp head with a long tail. Frame-rate independent: the
+			// weight follows the real frame time.
+			const float Shutter = g_Config.m_FogMotionBlurStrength / 100.0f / 60.0f;
+			const float Tau = Shutter / std::sqrt(24.0f);
+			Blend = std::min(std::exp(-Dt / Tau), 0.995f);
 		}
 		Push.m_aScreen[0] = 1.0f / std::max<uint32_t>(Extent.width, 1);
 		Push.m_aScreen[1] = 1.0f / std::max<uint32_t>(Extent.height, 1);
@@ -5027,17 +5058,19 @@ public:
 		PassInfo.renderArea.offset = {0, 0};
 		PassInfo.renderArea.extent = Extent;
 		vkCmdBeginRenderPass(CommandBuffer, &PassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PostPipeline);
+		const bool KeepHistory = g_Config.m_FogMotionBlur && g_Config.m_FogMotionBlurStrength > 0;
+		vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, KeepHistory ? m_PostPipeline : m_PostPipelineNoHistory);
 
 		const size_t Prev = m_LastPresentedSwapChainImageIndex;
 		const bool HaveHistory = Prev < m_vPostHistoryWritten.size() && Prev != m_CurImageIndex && m_vPostHistoryWritten[Prev];
-		std::array<VkDescriptorSet, 2> aSets = {m_vPostSceneImages[m_CurImageIndex].m_Descriptor, HaveHistory ? m_vPostHistoryImages[Prev].m_Descriptor : m_vPostSceneImages[m_CurImageIndex].m_Descriptor};
+		const VkDescriptorSet SceneSet = m_vPostSceneImages[m_CurImageIndex].m_Descriptor;
+		std::array<VkDescriptorSet, 3> aSets = {SceneSet, HaveHistory ? m_vPostHistoryImages[Prev].m_Descriptor : SceneSet, HaveHistory ? m_vPostHistory2Images[Prev].m_Descriptor : SceneSet};
 		vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PostPipeLayout, 0, aSets.size(), aSets.data(), 0, nullptr);
 		const SPostPush Push = FillPostPush(HaveHistory);
 		vkCmdPushConstants(CommandBuffer, m_PostPipeLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Push), &Push);
 		vkCmdDraw(CommandBuffer, 3, 1, 0, 0);
 		vkCmdEndRenderPass(CommandBuffer);
-		m_vPostHistoryWritten[m_CurImageIndex] = true;
+		m_vPostHistoryWritten[m_CurImageIndex] = KeepHistory;
 	}
 
 	[[nodiscard]] bool CreateShaderModule(const std::vector<uint8_t> &vCode, VkShaderModule &ShaderModule)

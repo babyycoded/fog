@@ -2,9 +2,11 @@
 
 #include <base/str.h>
 
+#include <engine/engine.h>
 #include <engine/gfx/image_manipulation.h>
 #include <engine/graphics.h>
 #include <engine/image.h>
+#include <engine/shared/jobs.h>
 #include <engine/storage.h>
 
 #include <generated/client_data.h>
@@ -237,8 +239,47 @@ void LoadParts(IGraphics *pGraphics, const CImageInfo &Image, CSkin::CSkinTextur
 void FogUpscaleSkin(const CImageInfo &Src, int Factor, CImageInfo &Dst) { Upscale(Src, Factor, Dst); }
 void FogMakeColorable(CImageInfo &Image) { MakeColorable(Image); }
 
+// reads and upscales the skin off the main thread (several hundred milliseconds of pixels)
+class CFogHiResJob : public IJob
+{
+public:
+	IGraphics *m_pGraphics = nullptr;
+	std::string m_Skin;
+	CImageInfo m_Big; // upscaled original
+	CImageInfo m_BigColorable; // the same, made colourable
+	bool m_Failed = false;
+
+protected:
+	void Run() override
+	{
+		CImageInfo Image;
+		char aPath[256];
+		str_format(aPath, sizeof(aPath), "skins/%s.png", m_Skin.c_str());
+		bool Loaded = m_pGraphics->LoadPng(Image, aPath, IStorage::TYPE_ALL);
+		if(!Loaded)
+		{
+			str_format(aPath, sizeof(aPath), "downloadedskins/%s.png", m_Skin.c_str());
+			Loaded = m_pGraphics->LoadPng(Image, aPath, IStorage::TYPE_SAVE);
+		}
+		if(!Loaded || Image.m_Format != CImageInfo::FORMAT_RGBA || Image.m_Width < 8)
+		{
+			Image.Free();
+			m_Failed = true;
+			return;
+		}
+
+		// aim for a body part of ~384 px, enough for a big tishka on a 1080p screen
+		const int Factor = std::clamp((int)std::ceil(1024.0f / Image.m_Width), 1, 4);
+		Upscale(Image, Factor, m_Big);
+		Image.Free();
+		m_BigColorable = m_Big.DeepCopy();
+		MakeColorable(m_BigColorable);
+	}
+};
+
 void CFogHiResTee::Unload(IGraphics *pGraphics)
 {
+	m_pJob = nullptr; // a running job owns its images and is simply dropped
 	m_Original.Unload(pGraphics);
 	m_Colorable.Unload(pGraphics);
 	m_Original.Reset();
@@ -247,38 +288,31 @@ void CFogHiResTee::Unload(IGraphics *pGraphics)
 	m_Failed = false;
 }
 
-bool CFogHiResTee::Get(IGraphics *pGraphics, const char *pSkinName, CSkin::CSkinTextures &Original, CSkin::CSkinTextures &Colorable)
+bool CFogHiResTee::Get(IGraphics *pGraphics, IEngine *pEngine, const char *pSkinName, CSkin::CSkinTextures &Original, CSkin::CSkinTextures &Colorable)
 {
 	if(m_Name != pSkinName)
 	{
 		Unload(pGraphics);
 		m_Name = pSkinName;
-
-		CImageInfo Image;
-		char aPath[256];
-		str_format(aPath, sizeof(aPath), "skins/%s.png", pSkinName);
-		bool Loaded = pGraphics->LoadPng(Image, aPath, IStorage::TYPE_ALL);
-		if(!Loaded)
-		{
-			str_format(aPath, sizeof(aPath), "downloadedskins/%s.png", pSkinName);
-			Loaded = pGraphics->LoadPng(Image, aPath, IStorage::TYPE_SAVE);
-		}
-		if(!Loaded || Image.m_Format != CImageInfo::FORMAT_RGBA || Image.m_Width < 8)
-		{
-			Image.Free();
-			m_Failed = true;
+		auto pJob = std::make_shared<CFogHiResJob>();
+		pJob->m_pGraphics = pGraphics;
+		pJob->m_Skin = pSkinName;
+		m_pJob = pJob;
+		pEngine->AddJob(pJob);
+		return false;
+	}
+	if(m_pJob)
+	{
+		if(!m_pJob->Done())
 			return false;
+		std::shared_ptr<CFogHiResJob> pJob = std::move(m_pJob);
+		if(pJob->State() != IJob::STATE_DONE || pJob->m_Failed)
+			m_Failed = true;
+		else
+		{
+			LoadParts(pGraphics, pJob->m_Big, m_Original);
+			LoadParts(pGraphics, pJob->m_BigColorable, m_Colorable);
 		}
-
-		// aim for a body part of ~384 px, enough for a big tishka on a 1080p screen
-		const int Factor = std::clamp((int)std::ceil(1024.0f / Image.m_Width), 1, 4);
-		CImageInfo Big;
-		Upscale(Image, Factor, Big);
-		Image.Free();
-		LoadParts(pGraphics, Big, m_Original);
-		MakeColorable(Big);
-		LoadParts(pGraphics, Big, m_Colorable);
-		Big.Free();
 	}
 	if(m_Failed)
 		return false;

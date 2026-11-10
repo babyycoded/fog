@@ -4,6 +4,7 @@
 #include <base/color.h>
 #include <base/vmath.h>
 
+#include <engine/shared/jobs.h>
 #include <engine/shared/protocol.h>
 
 #include <game/client/animstate.h>
@@ -12,6 +13,34 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
+#include <vector>
+
+// Builds the flat silhouette and bloom of one afterimage on a worker thread.
+class CFogTrailShapeJob : public IJob
+{
+public:
+	static constexpr float PIXELS_PER_UNIT = 1.25f;
+
+	// the pose, read on the main thread
+	std::shared_ptr<const CSkin::SSilhouetteMasks> m_pMasks;
+	float m_AnimScale = 1.0f, m_BaseSize = 64.0f, m_BodySize = 64.0f;
+	vec2 m_BodyPos = vec2(0, 0);
+	float m_BodyAngle = 0.0f;
+	bool m_FlipFeet = false;
+	vec2 m_aFootPos[2] = {vec2(0, 0), vec2(0, 0)};
+	float m_aFootAngle[2] = {0.0f, 0.0f};
+	vec2 m_Center = vec2(0, 0);
+	float m_Half = 0.0f;
+	int m_N = 16;
+
+	// RGBA pixels of the shape and the bloom, ready to upload
+	std::vector<uint8_t> m_vShape;
+	std::vector<uint8_t> m_vGlow;
+
+protected:
+	void Run() override;
+};
 
 // Cosmetic afterimage trails behind fast tees (Sandevistan and friends). The players component
 // reports every rendered pose through Record(); the trail renders the frozen copies behind tees.
@@ -53,6 +82,7 @@ private:
 		IGraphics::CTextureHandle m_Glow;
 		vec2 m_ShapeCenter = vec2(0, 0);
 		float m_ShapeSize = 0.0f; // world size of the square texture
+		std::shared_ptr<CFogTrailShapeJob> m_pShapeJob; // set while the worker builds the textures
 	};
 	struct STrack
 	{
@@ -67,6 +97,7 @@ private:
 	};
 
 	bool BuildSilhouette(SEcho &Echo);
+	bool PollShape(SEcho &Echo);
 	void ReleaseEcho(SEcho &Echo);
 	void DrawShape(const SEcho &Echo, IGraphics::CTextureHandle Texture, vec2 Offset, float Scale, ColorRGBA Color);
 	ColorRGBA EchoColor(int Preset, const SEcho &Echo, float Age) const;

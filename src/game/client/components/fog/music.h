@@ -12,8 +12,10 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 class IHttpRequest;
+class CFogArtJob;
 
 // Now playing state (MPRIS) plus synced lyrics from the local cache or LRCLIB.
 class CFogMusic : public CComponent
@@ -65,11 +67,13 @@ private:
 	void FinishFetch();
 	void ApplyLrc(const char *pLrc);
 	void UpdateAlbumArt();
-	void SetAlbumArt(const unsigned char *pData, size_t Size);
+	// reads (Path) and decodes the cover on a worker thread; UpdateAlbumArt uploads it
+	void StartAlbumArt(std::vector<unsigned char> &&vData, std::string &&Path);
 
 	IGraphics::CTextureHandle m_ArtTexture;
 	std::string m_ArtUrl; // the art currently loaded or loading
 	std::shared_ptr<IHttpRequest> m_pArtRequest;
+	std::shared_ptr<CFogArtJob> m_pArtJob;
 
 	CMprisClient m_Mpris;
 	SMediaState m_Media;

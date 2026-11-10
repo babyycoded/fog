@@ -212,7 +212,7 @@ void CMenus::RenderFogStudio(CUIRect Screen)
 				// sharp upscaled parts instead of the game textures
 				static CFogHiResTee s_aHiRes[2];
 				CSkin::CSkinTextures Original, Colorable;
-				if(s_aHiRes[ForDummy].Get(Graphics(), pFile, Original, Colorable))
+				if(s_aHiRes[ForDummy].Get(Graphics(), Engine(), pFile, Original, Colorable))
 				{
 					Info.m_OriginalRenderSkin = Original;
 					Info.m_ColorableRenderSkin = Colorable;

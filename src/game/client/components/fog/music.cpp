@@ -6,8 +6,10 @@
 #include <base/str.h>
 #include <base/time.h>
 
+#include <engine/engine.h>
 #include <engine/http.h>
 #include <engine/shared/config.h>
+#include <engine/shared/jobs.h>
 #include <engine/shared/json.h>
 #include <engine/storage.h>
 
@@ -473,21 +475,19 @@ void CFogMusic::FinishFetch()
 
 // ---------------------------------------------------------------- album art
 
-void CFogMusic::SetAlbumArt(const unsigned char *pData, size_t Size)
+static bool DecodeAlbumArt(IGraphics *pGraphics, const unsigned char *pData, size_t Size, CImageInfo &Image)
 {
-	Graphics()->UnloadTexture(&m_ArtTexture);
 	if(!pData || Size < 8)
-		return;
-	CImageInfo Image;
+		return false;
 	static const unsigned char s_aPngMagic[] = {0x89, 'P', 'N', 'G'};
 	if(mem_comp(pData, s_aPngMagic, sizeof(s_aPngMagic)) == 0)
 	{
-		if(!Graphics()->LoadPng(Image, pData, Size, "album art"))
-			return;
+		if(!pGraphics->LoadPng(Image, pData, Size, "album art"))
+			return false;
 		if(Image.m_Format != CImageInfo::FORMAT_RGBA)
 		{
 			Image.Free();
-			return;
+			return false;
 		}
 	}
 	else
@@ -495,33 +495,83 @@ void CFogMusic::SetAlbumArt(const unsigned char *pData, size_t Size)
 #if defined(CONF_FOG_TURBOJPEG)
 		tjhandle Handle = tjInitDecompress();
 		if(!Handle)
-			return;
+			return false;
 		int Width = 0, Height = 0, Subsamp = 0, Colorspace = 0;
 		if(tjDecompressHeader3(Handle, pData, (unsigned long)Size, &Width, &Height, &Subsamp, &Colorspace) != 0 || Width <= 0 || Height <= 0 || Width > 4096 || Height > 4096)
 		{
 			tjDestroy(Handle);
-			return;
+			return false;
 		}
 		Image.m_Width = Width;
 		Image.m_Height = Height;
 		Image.m_Format = CImageInfo::FORMAT_RGBA;
-		Image.m_pData = static_cast<uint8_t *>(malloc(Image.DataSize()));
+		Image.Allocate();
 		const int Result = tjDecompress2(Handle, pData, (unsigned long)Size, Image.m_pData, Width, 0, Height, TJPF_RGBA, TJFLAG_FASTDCT);
 		tjDestroy(Handle);
 		if(Result != 0)
 		{
 			Image.Free();
-			return;
+			return false;
 		}
 #else
-		return;
+		return false;
 #endif
 	}
-	m_ArtTexture = Graphics()->LoadTextureRawMove(Image, 0, "fog album art");
+	return true;
+}
+
+
+// album covers can be large (local files often are thousands of pixels): reading and decoding
+// them in a frame stalled the game on every track change
+class CFogArtJob : public IJob
+{
+public:
+	IGraphics *m_pGraphics = nullptr;
+	std::string m_Path; // a local file to read first, or empty when m_vData already holds the bytes
+	std::vector<unsigned char> m_vData;
+	CImageInfo m_Image;
+	bool m_Ok = false;
+
+protected:
+	void Run() override
+	{
+		if(!m_Path.empty())
+		{
+			FILE *pFile = fopen(m_Path.c_str(), "rb");
+			if(!pFile)
+				return;
+			unsigned char aBuf[16384];
+			size_t Read;
+			while((Read = fread(aBuf, 1, sizeof(aBuf), pFile)) > 0 && m_vData.size() < 16 * 1024 * 1024)
+				m_vData.insert(m_vData.end(), aBuf, aBuf + Read);
+			fclose(pFile);
+		}
+		m_Ok = DecodeAlbumArt(m_pGraphics, m_vData.data(), m_vData.size(), m_Image);
+	}
+};
+
+void CFogMusic::StartAlbumArt(std::vector<unsigned char> &&vData, std::string &&Path)
+{
+	auto pJob = std::make_shared<CFogArtJob>();
+	pJob->m_pGraphics = Graphics();
+	pJob->m_vData = std::move(vData);
+	pJob->m_Path = std::move(Path);
+	m_pArtJob = pJob;
+	Engine()->AddJob(pJob);
 }
 
 void CFogMusic::UpdateAlbumArt()
 {
+	if(m_pArtJob && m_pArtJob->Done())
+	{
+		std::shared_ptr<CFogArtJob> pJob = std::move(m_pArtJob);
+		if(pJob->State() == IJob::STATE_DONE && pJob->m_Ok)
+		{
+			Graphics()->UnloadTexture(&m_ArtTexture);
+			m_ArtTexture = Graphics()->LoadTextureRawMove(pJob->m_Image, 0, "fog album art");
+		}
+	}
+
 	if(m_pArtRequest && m_pArtRequest->Done())
 	{
 		std::shared_ptr<IHttpRequest> pRequest = m_pArtRequest;
@@ -531,7 +581,8 @@ void CFogMusic::UpdateAlbumArt()
 			unsigned char *pData = nullptr;
 			size_t Size = 0;
 			pRequest->Result(&pData, &Size);
-			SetAlbumArt(pData, Size);
+			if(pData && Size >= 8)
+				StartAlbumArt(std::vector<unsigned char>(pData, pData + Size), std::string());
 		}
 	}
 
@@ -544,6 +595,7 @@ void CFogMusic::UpdateAlbumArt()
 		m_pArtRequest->Abort();
 		m_pArtRequest = nullptr;
 	}
+	m_pArtJob = nullptr; // a cover still decoding belongs to the old track
 	Graphics()->UnloadTexture(&m_ArtTexture);
 	if(Url.empty())
 		return;
@@ -563,16 +615,7 @@ void CFogMusic::UpdateAlbumArt()
 			else
 				Path += *p;
 		}
-		FILE *pFile = fopen(Path.c_str(), "rb");
-		if(!pFile)
-			return;
-		std::vector<unsigned char> vData;
-		unsigned char aBuf[16384];
-		size_t Read;
-		while((Read = fread(aBuf, 1, sizeof(aBuf), pFile)) > 0 && vData.size() < 16 * 1024 * 1024)
-			vData.insert(vData.end(), aBuf, aBuf + Read);
-		fclose(pFile);
-		SetAlbumArt(vData.data(), vData.size());
+		StartAlbumArt(std::vector<unsigned char>(), std::move(Path));
 	}
 	else if(str_startswith(Url.c_str(), "https://"))
 	{

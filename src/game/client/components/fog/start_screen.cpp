@@ -240,7 +240,7 @@ void CMenusStart::RenderFogStart(CUIRect MainView)
 		// sharp, upscaled parts instead of the 96 px game textures
 		static CFogHiResTee s_HiRes;
 		CSkin::CSkinTextures HiOriginal, HiColorable;
-		if(s_HiRes.Get(Graphics(), pContainer && pContainer->Skin() ? pSkinName : "default", HiOriginal, HiColorable))
+		if(s_HiRes.Get(Graphics(), Engine(), pContainer && pContainer->Skin() ? pSkinName : "default", HiOriginal, HiColorable))
 		{
 			TeeInfo.m_OriginalRenderSkin = HiOriginal;
 			TeeInfo.m_ColorableRenderSkin = HiColorable;

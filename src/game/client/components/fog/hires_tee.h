@@ -3,9 +3,12 @@
 
 #include <game/client/skin.h>
 
+#include <memory>
 #include <string>
 
+class IEngine;
 class IGraphics;
+class CFogHiResJob;
 
 // A big, sharp tishka for the menus: the skin PNG is upscaled on the CPU (bicubic with
 // premultiplied alpha and a light unsharp mask) and cut into parts like the game does, so a
@@ -20,7 +23,8 @@ class CFogHiResTee
 {
 public:
 	// Returns false when the skin file can't be read (then use the normal skin textures).
-	bool Get(IGraphics *pGraphics, const char *pSkinName, CSkin::CSkinTextures &Original, CSkin::CSkinTextures &Colorable);
+	// The skin is read and upscaled on a worker thread: while that runs it returns false too.
+	bool Get(IGraphics *pGraphics, IEngine *pEngine, const char *pSkinName, CSkin::CSkinTextures &Original, CSkin::CSkinTextures &Colorable);
 	void Unload(IGraphics *pGraphics);
 
 private:
@@ -28,6 +32,7 @@ private:
 	bool m_Failed = false;
 	CSkin::CSkinTextures m_Original;
 	CSkin::CSkinTextures m_Colorable;
+	std::shared_ptr<CFogHiResJob> m_pJob;
 };
 
 #endif

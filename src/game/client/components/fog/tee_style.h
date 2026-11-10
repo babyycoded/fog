@@ -9,6 +9,7 @@
 #include <game/client/skin.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -60,30 +61,41 @@ public:
 	static unsigned InvertPackedHsl(unsigned Packed);
 
 private:
+	// the upscaled skin, shared with a bake running on a worker thread
+	struct SSkinImages
+	{
+		// two sizes: [0] for the game (about 2x), [1] sharp for the big menu tees (about 4x)
+		CImageInfo m_aBase[2]; // upscaled original skin
+		CImageInfo m_aGray[2]; // the same, made colourable (grayscale with the body weighting)
+	};
+	class CBakeJob;
+	class CLoadJob;
 	struct SSlot
 	{
 		std::string m_Skin;
 		bool m_Failed = false;
-		// two sizes: [0] for the game (about 2x), [1] sharp for the big menu tees (about 4x)
-		CImageInfo m_aBase[2]; // upscaled original skin
-		CImageInfo m_aGray[2]; // the same, made colourable (grayscale with the body weighting)
-		CImageInfo m_aWork[2]; // re-coloured copy that gets uploaded
+		std::shared_ptr<const SSkinImages> m_pImages;
+		CImageInfo m_aWork[2]; // re-coloured copy that gets uploaded (lent to m_pJob while it runs)
 		int m_LastLevel = -1;
 		CSkin::CSkinTextures m_Textures; // outlines and eyes stay, body/feet/hands are baked
 		float m_LastBake = -1.0f;
 		float m_LastUsed = 0.0f;
+		std::shared_ptr<CLoadJob> m_pLoadJob; // the skin being read and upscaled on a worker thread
+		std::shared_ptr<CBakeJob> m_pJob; // the bake in progress on a worker thread
+		int m_JobLevel = 0;
 	};
-
 	bool LoadSlot(SSlot &Slot, const char *pSkinName);
 	void UnloadSlot(SSlot &Slot);
-	void Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook &Look, float Time, int L);
+	// re-colours Work from the skin images; thread safe, runs on a worker for animated looks
+	static void Bake(const SSkinImages &Images, CImageInfo &Work, const CTeeRenderInfo &Game, const SFogLook &Look, float Time, int Level, const CImageInfo *pPattern);
+	void UploadWork(SSlot &Slot, int Level);
 	bool BakeInto(SSlot &Slot, CTeeRenderInfo &Info, const SFogLook &Look, const char *pSkinName, float Rate, bool AllowSharp = true);
 	void LoadPattern();
 	void SyncDummy();
 
 	SSlot m_aSlots[NUM_SLOTS];
 	std::map<int, SSlot> m_Remote;
-	CImageInfo m_Pattern;
+	std::shared_ptr<const CImageInfo> m_pPattern; // shared with running bakes
 	std::string m_PatternName;
 	std::vector<std::string> m_vPatternFiles;
 	bool m_PatternsScanned = false;

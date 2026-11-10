@@ -4,7 +4,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <map>
+#include <unordered_map>
 
 namespace {
 
@@ -61,6 +63,57 @@ struct SCell
 	float m_TexelsPerUnit = 1.0f; // in the downsampled cell
 };
 
+// Lines share most of their letters, so blurred cells are kept across builds. The key is the
+// exact glyph mask plus the blur parameters, so a hit gives the very same floats a fresh blur
+// would; nothing depends on where the glyph sits in the text atlas.
+struct SCachedCell
+{
+	std::vector<uint8_t> m_vMask;
+	int m_MaskW;
+	int m_MaskH;
+	uint32_t m_SigmaBits;
+	uint32_t m_TexelsBits;
+	SCell m_Cell;
+};
+
+constexpr size_t MAX_CACHED_CELLS = 512;
+std::unordered_map<uint64_t, std::vector<SCachedCell>> gs_CellCache;
+size_t gs_NumCachedCells = 0;
+
+uint32_t FloatBits(float Value)
+{
+	uint32_t Bits;
+	std::memcpy(&Bits, &Value, sizeof(Bits));
+	return Bits;
+}
+
+uint64_t HashMask(const std::vector<uint8_t> &vMask, int MaskW, int MaskH, uint32_t SigmaBits, uint32_t TexelsBits)
+{
+	uint64_t Hash = 1469598103934665603ull;
+	auto Mix = [&](uint64_t Value) {
+		Hash ^= Value;
+		Hash *= 1099511628211ull;
+	};
+	Mix((uint64_t)MaskW);
+	Mix((uint64_t)MaskH);
+	Mix(SigmaBits);
+	Mix(TexelsBits);
+	for(uint8_t Byte : vMask)
+		Mix(Byte);
+	return Hash;
+}
+
+const SCell *FindCachedCell(uint64_t Hash, const std::vector<uint8_t> &vMask, int MaskW, int MaskH, uint32_t SigmaBits, uint32_t TexelsBits)
+{
+	const auto Found = gs_CellCache.find(Hash);
+	if(Found == gs_CellCache.end())
+		return nullptr;
+	for(const SCachedCell &Cached : Found->second)
+		if(Cached.m_MaskW == MaskW && Cached.m_MaskH == MaskH && Cached.m_SigmaBits == SigmaBits && Cached.m_TexelsBits == TexelsBits && Cached.m_vMask == vMask)
+			return &Cached.m_Cell;
+	return nullptr;
+}
+
 } // namespace
 
 void CFogGlowAtlas::Unload(IGraphics *pGraphics)
@@ -102,15 +155,31 @@ void CFogGlowAtlas::Build(IGraphics *pGraphics, ITextRender *pTextRender, const 
 		const int SmallW = (MaskW + DOWNSAMPLE - 1) / DOWNSAMPLE;
 		const int SmallH = (MaskH + DOWNSAMPLE - 1) / DOWNSAMPLE;
 
+		const uint32_t SigmaBits = FloatBits(Sigma);
+		const uint32_t TexelsBits = FloatBits(TexelsPerUnit);
+		const uint64_t Hash = HashMask(vMask, MaskW, MaskH, SigmaBits, TexelsBits);
 		SCell Cell;
-		Cell.m_Width = SmallW + Pad * 2;
-		Cell.m_Height = SmallH + Pad * 2;
-		Cell.m_TexelsPerUnit = TexelsPerUnit;
-		Cell.m_vData.assign((size_t)Cell.m_Width * Cell.m_Height, 0.0f);
-		for(int y = 0; y < MaskH; y++)
-			for(int x = 0; x < MaskW; x++)
-				Cell.m_vData[(size_t)(y / DOWNSAMPLE + Pad) * Cell.m_Width + (x / DOWNSAMPLE + Pad)] += vMask[(size_t)y * MaskW + x] / (255.0f * DOWNSAMPLE * DOWNSAMPLE);
-		GaussianBlur(Cell.m_vData, Cell.m_Width, Cell.m_Height, Sigma);
+		if(const SCell *pCached = FindCachedCell(Hash, vMask, MaskW, MaskH, SigmaBits, TexelsBits))
+			Cell = *pCached;
+		else
+		{
+			Cell.m_Width = SmallW + Pad * 2;
+			Cell.m_Height = SmallH + Pad * 2;
+			Cell.m_TexelsPerUnit = TexelsPerUnit;
+			Cell.m_vData.assign((size_t)Cell.m_Width * Cell.m_Height, 0.0f);
+			for(int y = 0; y < MaskH; y++)
+				for(int x = 0; x < MaskW; x++)
+					Cell.m_vData[(size_t)(y / DOWNSAMPLE + Pad) * Cell.m_Width + (x / DOWNSAMPLE + Pad)] += vMask[(size_t)y * MaskW + x] / (255.0f * DOWNSAMPLE * DOWNSAMPLE);
+			GaussianBlur(Cell.m_vData, Cell.m_Width, Cell.m_Height, Sigma);
+
+			if(gs_NumCachedCells >= MAX_CACHED_CELLS)
+			{
+				gs_CellCache.clear();
+				gs_NumCachedCells = 0;
+			}
+			gs_CellCache[Hash].push_back({vMask, MaskW, MaskH, SigmaBits, TexelsBits, Cell});
+			gs_NumCachedCells++;
+		}
 
 		CellOfGlyph[Key] = (int)vCells.size();
 		vGlyphCell[i] = (int)vCells.size();

@@ -7,9 +7,11 @@
 #include <base/str.h>
 
 #include <engine/client.h>
+#include <engine/engine.h>
 #include <engine/gfx/image_manipulation.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
+#include <engine/shared/jobs.h>
 #include <engine/storage.h>
 
 #include <generated/client_data.h>
@@ -146,16 +148,73 @@ bool CFogTeeStyle::Enabled(int Slot) const
 	return Slot == SLOT_PLAYER || g_Config.m_FogDummySync != 0;
 }
 
+class CFogTeeStyle::CBakeJob : public IJob
+{
+public:
+	std::shared_ptr<const SSkinImages> m_pImages;
+	std::shared_ptr<const CImageInfo> m_pPattern;
+	CImageInfo m_Work;
+	CTeeRenderInfo m_Game;
+	SFogLook m_Look;
+	float m_Time = 0.0f;
+	int m_Level = 0;
+
+protected:
+	void Run() override { Bake(*m_pImages, m_Work, m_Game, m_Look, m_Time, m_Level, m_pPattern.get()); }
+};
+
+// reads and upscales a skin on a worker thread: the slow part of a tee appearing
+class CFogTeeStyle::CLoadJob : public IJob
+{
+public:
+	IGraphics *m_pGraphics = nullptr;
+	std::string m_Skin;
+	std::shared_ptr<SSkinImages> m_pImages;
+	CImageInfo m_aWork[2];
+	bool m_Failed = false;
+
+protected:
+	void Run() override
+	{
+		CImageInfo Image;
+		char aPath[IO_MAX_PATH_LENGTH];
+		str_format(aPath, sizeof(aPath), "skins/%s.png", m_Skin.c_str());
+		bool Loaded = m_pGraphics->LoadPng(Image, aPath, IStorage::TYPE_ALL);
+		if(!Loaded)
+		{
+			str_format(aPath, sizeof(aPath), "downloadedskins/%s.png", m_Skin.c_str());
+			Loaded = m_pGraphics->LoadPng(Image, aPath, IStorage::TYPE_SAVE);
+		}
+		if(!Loaded || Image.m_Format != CImageInfo::FORMAT_RGBA || Image.m_Width < 8)
+		{
+			Image.Free();
+			m_Failed = true;
+			return;
+		}
+		// a body part of about 192 px for the game and about 384 px for the big menu tees
+		m_pImages = std::make_shared<SSkinImages>();
+		for(int L = 0; L < 2; L++)
+		{
+			const int Factor = std::clamp((int)std::lround((L == 0 ? 512.0f : 1024.0f) / Image.m_Width), 1, 4);
+			FogUpscaleSkin(Image, Factor, m_pImages->m_aBase[L]);
+			m_pImages->m_aGray[L] = m_pImages->m_aBase[L].DeepCopy();
+			FogMakeColorable(m_pImages->m_aGray[L]);
+			m_aWork[L] = m_pImages->m_aBase[L].DeepCopy();
+		}
+		Image.Free();
+	}
+};
+
 void CFogTeeStyle::UnloadSlot(SSlot &Slot)
 {
 	Slot.m_Textures.Unload(Graphics());
 	Slot.m_Textures.Reset();
-	for(int L = 0; L < 2; L++)
-	{
-		Slot.m_aBase[L].Free();
-		Slot.m_aGray[L].Free();
-		Slot.m_aWork[L].Free();
-	}
+	// a bake still running keeps its own images and work buffer alive, so it is simply dropped
+	Slot.m_pLoadJob = nullptr;
+	Slot.m_pJob = nullptr;
+	Slot.m_pImages = nullptr;
+	for(auto &Work : Slot.m_aWork)
+		Work.Free();
 	Slot.m_LastLevel = -1;
 	Slot.m_Skin.clear();
 	Slot.m_Failed = false;
@@ -178,49 +237,44 @@ void CFogTeeStyle::OnShutdown()
 	m_Remote.clear();
 	for(auto &Slot : m_aSlots)
 		UnloadSlot(Slot);
-	m_Pattern.Free();
+	m_pPattern = nullptr;
 	m_PatternName.clear();
 }
 
 bool CFogTeeStyle::LoadSlot(SSlot &Slot, const char *pSkinName)
 {
-	if(Slot.m_Skin == pSkinName)
-		return !Slot.m_Failed;
-	UnloadSlot(Slot);
-	Slot.m_Skin = pSkinName;
-
-	CImageInfo Image;
-	char aPath[IO_MAX_PATH_LENGTH];
-	str_format(aPath, sizeof(aPath), "skins/%s.png", pSkinName);
-	bool Loaded = Graphics()->LoadPng(Image, aPath, IStorage::TYPE_ALL);
-	if(!Loaded)
+	if(Slot.m_Skin != pSkinName)
 	{
-		str_format(aPath, sizeof(aPath), "downloadedskins/%s.png", pSkinName);
-		Loaded = Graphics()->LoadPng(Image, aPath, IStorage::TYPE_SAVE);
+		// a new skin: read it on a worker, the tee keeps its normal look until it is ready
+		UnloadSlot(Slot);
+		Slot.m_Skin = pSkinName;
+		auto pJob = std::make_shared<CLoadJob>();
+		pJob->m_pGraphics = Graphics();
+		pJob->m_Skin = pSkinName;
+		Slot.m_pLoadJob = pJob;
+		Engine()->AddJob(pJob);
+		return false;
 	}
-	if(!Loaded || Image.m_Format != CImageInfo::FORMAT_RGBA || Image.m_Width < 8)
+	if(!Slot.m_pLoadJob)
+		return !Slot.m_Failed;
+	if(!Slot.m_pLoadJob->Done())
+		return false;
+	std::shared_ptr<CLoadJob> pJob = std::move(Slot.m_pLoadJob);
+	if(pJob->State() != IJob::STATE_DONE || pJob->m_Failed)
 	{
-		Image.Free();
 		Slot.m_Failed = true;
 		return false;
 	}
-	// a body part of about 192 px for the game and about 384 px for the big menu tees
+	Slot.m_pImages = pJob->m_pImages;
 	for(int L = 0; L < 2; L++)
-	{
-		const int Factor = std::clamp((int)std::lround((L == 0 ? 512.0f : 1024.0f) / Image.m_Width), 1, 4);
-		FogUpscaleSkin(Image, Factor, Slot.m_aBase[L]);
-		Slot.m_aGray[L] = Slot.m_aBase[L].DeepCopy();
-		FogMakeColorable(Slot.m_aGray[L]);
-		Slot.m_aWork[L] = Slot.m_aBase[L].DeepCopy();
-	}
-	Image.Free();
+		Slot.m_aWork[L] = std::move(pJob->m_aWork[L]);
 
 	CSkin::CSkinTextures &t = Slot.m_Textures;
-	t.m_BodyOutline = Graphics()->LoadSpriteTexture(Slot.m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_BODY_OUTLINE]);
-	t.m_FeetOutline = Graphics()->LoadSpriteTexture(Slot.m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_FOOT_OUTLINE]);
-	t.m_HandsOutline = Graphics()->LoadSpriteTexture(Slot.m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_HAND_OUTLINE]);
+	t.m_BodyOutline = Graphics()->LoadSpriteTexture(Slot.m_pImages->m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_BODY_OUTLINE]);
+	t.m_FeetOutline = Graphics()->LoadSpriteTexture(Slot.m_pImages->m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_FOOT_OUTLINE]);
+	t.m_HandsOutline = Graphics()->LoadSpriteTexture(Slot.m_pImages->m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_HAND_OUTLINE]);
 	for(size_t i = 0; i < std::size(t.m_aEyes); i++)
-		t.m_aEyes[i] = Graphics()->LoadSpriteTexture(Slot.m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_EYE_NORMAL + i]);
+		t.m_aEyes[i] = Graphics()->LoadSpriteTexture(Slot.m_pImages->m_aBase[1], std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_EYE_NORMAL + i]);
 	return true;
 }
 
@@ -239,7 +293,7 @@ void CFogTeeStyle::LoadPattern()
 	if(m_PatternName == g_Config.m_FogTeePatternFile)
 		return;
 	m_PatternName = g_Config.m_FogTeePatternFile;
-	m_Pattern.Free();
+	m_pPattern = nullptr;
 	if(m_PatternName.empty())
 		return;
 	char aPath[IO_MAX_PATH_LENGTH];
@@ -248,13 +302,13 @@ void CFogTeeStyle::LoadPattern()
 	if(Graphics()->LoadPng(Image, aPath, IStorage::TYPE_ALL))
 	{
 		if(Image.m_Format == CImageInfo::FORMAT_RGBA)
-			m_Pattern = std::move(Image);
+			m_pPattern = std::make_shared<CImageInfo>(std::move(Image));
 		else
 			Image.Free();
 	}
 }
 
-void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook &L, float Time, int Level)
+void CFogTeeStyle::Bake(const SSkinImages &Images, CImageInfo &Work, const CTeeRenderInfo &Game, const SFogLook &L, float Time, int Level, const CImageInfo *pPattern)
 {
 	const bool Invert = L.m_Invert;
 	const int Mode = L.m_ColorMode;
@@ -285,9 +339,7 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 
 	// pattern
 	const int Pattern = L.m_Pattern;
-	if(Pattern == 9)
-		LoadPattern();
-	const bool HasImage = Pattern == 9 && m_Pattern.m_pData;
+	const bool HasImage = Pattern == 9 && pPattern && pPattern->m_pData;
 	const float Opacity = Pattern == 0 || (Pattern == 9 && !HasImage) ? 0.0f : L.m_PatternOpacity / 100.0f;
 	const float Scale = 6.0f / (L.m_PatternScale / 100.0f);
 	const float Angle = L.m_PatternAngle / 360.0f * PI2;
@@ -332,9 +384,9 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 		{
 			if(!HasImage)
 				return 0.0f;
-			const int w = (int)m_Pattern.m_Width, h = (int)m_Pattern.m_Height;
+			const int w = (int)pPattern->m_Width, h = (int)pPattern->m_Height;
 			const float tx = Frac((px + Offset) / 6.0f) * w, ty = Frac(py / 6.0f) * h;
-			const uint8_t *p = &m_Pattern.m_pData[((size_t)std::clamp((int)ty, 0, h - 1) * w + std::clamp((int)tx, 0, w - 1)) * 4];
+			const uint8_t *p = &pPattern->m_pData[((size_t)std::clamp((int)ty, 0, h - 1) * w + std::clamp((int)tx, 0, w - 1)) * 4];
 			Color = Inv({p[0] / 255.0f, p[1] / 255.0f, p[2] / 255.0f});
 			return p[3] / 255.0f;
 		}
@@ -352,22 +404,22 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 		const float Base = std::min(s, 1.0f), Highlight = std::max(s - 1.0f, 0.0f) * 0.3f;
 		return SRgb{c.r * Base + Highlight, c.g * Base + Highlight, c.b * Base + Highlight};
 	};
-	const size_t Pitch = Slot.m_aWork[Level].m_Width * 4;
+	const size_t Pitch = Work.m_Width * 4;
 
 	// body: colour + pattern, shaded by the colourable skin
 	{
-		const SSpriteRect r = SpriteRect(Slot.m_aWork[Level], SPRITE_TEE_BODY);
+		const SSpriteRect r = SpriteRect(Work, SPRITE_TEE_BODY);
 		for(int y = 0; y < r.h; y++)
 			for(int x = 0; x < r.w; x++)
 			{
 				const size_t i = (size_t)(r.y + y) * Pitch + (size_t)(r.x + x) * 4;
-				if(Slot.m_aBase[Level].m_pData[i + 3] == 0)
+				if(Images.m_aBase[Level].m_pData[i + 3] == 0)
 					continue;
 				const float u = (x + 0.5f) / r.w, v = (y + 0.5f) / r.h;
-				const float g = Slot.m_aGray[Level].m_pData[i] / 255.0f;
+				const float g = Images.m_aGray[Level].m_pData[i] / 255.0f;
 				SRgb Base;
 				if(GameColours && !Game.m_CustomColoredSkin)
-					Base = Inv({Slot.m_aBase[Level].m_pData[i] / 255.0f, Slot.m_aBase[Level].m_pData[i + 1] / 255.0f, Slot.m_aBase[Level].m_pData[i + 2] / 255.0f});
+					Base = Inv({Images.m_aBase[Level].m_pData[i] / 255.0f, Images.m_aBase[Level].m_pData[i + 1] / 255.0f, Images.m_aBase[Level].m_pData[i + 2] / 255.0f});
 				else if(GameColours)
 					Base = Shade(GameBody, g); // exactly like the game's custom colours
 				else
@@ -379,7 +431,7 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 					if(m > 0.0f)
 						Base = Mix(Base, Shade(Pat, g / BASE_SHADE), m);
 				}
-				Write(&Slot.m_aWork[Level].m_pData[i], Base);
+				Write(&Work.m_pData[i], Base);
 			}
 	}
 
@@ -407,21 +459,24 @@ void CFogTeeStyle::Bake(SSlot &Slot, const CTeeRenderInfo &Game, const SFogLook 
 	} aParts[] = {{SPRITE_TEE_FOOT, Feet, FeetOwnPixels}, {SPRITE_TEE_HAND, Hands, GameColours && !Game.m_CustomColoredSkin}};
 	for(const auto &Part : aParts)
 	{
-		const SSpriteRect r = SpriteRect(Slot.m_aWork[Level], Part.m_Sprite);
+		const SSpriteRect r = SpriteRect(Work, Part.m_Sprite);
 		const float Gain = (GameColours || (Part.m_Sprite == SPRITE_TEE_FOOT && L.m_FeetMode == 1)) ? 1.0f : 1.0f / BASE_SHADE;
 		for(int y = 0; y < r.h; y++)
 			for(int x = 0; x < r.w; x++)
 			{
 				const size_t i = (size_t)(r.y + y) * Pitch + (size_t)(r.x + x) * 4;
-				if(Slot.m_aBase[Level].m_pData[i + 3] == 0)
+				if(Images.m_aBase[Level].m_pData[i + 3] == 0)
 					continue;
 				if(Part.m_OwnPixels)
-					Write(&Slot.m_aWork[Level].m_pData[i], Inv({Slot.m_aBase[Level].m_pData[i] / 255.0f, Slot.m_aBase[Level].m_pData[i + 1] / 255.0f, Slot.m_aBase[Level].m_pData[i + 2] / 255.0f}));
+					Write(&Work.m_pData[i], Inv({Images.m_aBase[Level].m_pData[i] / 255.0f, Images.m_aBase[Level].m_pData[i + 1] / 255.0f, Images.m_aBase[Level].m_pData[i + 2] / 255.0f}));
 				else
-					Write(&Slot.m_aWork[Level].m_pData[i], Shade(Part.m_Color, Slot.m_aGray[Level].m_pData[i] / 255.0f * Gain));
+					Write(&Work.m_pData[i], Shade(Part.m_Color, Images.m_aGray[Level].m_pData[i] / 255.0f * Gain));
 			}
 	}
+}
 
+void CFogTeeStyle::UploadWork(SSlot &Slot, int Level)
+{
 	CSkin::CSkinTextures &t = Slot.m_Textures;
 	Graphics()->UnloadTexture(&t.m_Body);
 	Graphics()->UnloadTexture(&t.m_Feet);
@@ -437,12 +492,43 @@ bool CFogTeeStyle::BakeInto(SSlot &s, CTeeRenderInfo &Info, const SFogLook &Look
 		return false;
 	// in the menus the tee is drawn big: bake the sharp size; in game the lighter one
 	const int Level = AllowSharp && (Client()->State() != IClient::STATE_ONLINE || GameClient()->m_Menus.IsActive()) ? 1 : 0;
+	// a bake came back from the worker: take its pixels back and upload them
+	if(s.m_pJob && s.m_pJob->Done())
+	{
+		const bool Finished = s.m_pJob->State() == IJob::STATE_DONE;
+		s.m_aWork[s.m_JobLevel] = std::move(s.m_pJob->m_Work);
+		s.m_pJob = nullptr;
+		if(Finished)
+			UploadWork(s, s.m_JobLevel);
+	}
 	const float Now = Client()->GlobalTime();
-	if(s.m_LastBake < 0.0f || Now - s.m_LastBake >= 1.0f / Rate || Now < s.m_LastBake || Level != s.m_LastLevel)
+	if(!s.m_pJob && (s.m_LastBake < 0.0f || Now - s.m_LastBake >= 1.0f / Rate || Now < s.m_LastBake || Level != s.m_LastLevel))
 	{
 		s.m_LastBake = Now;
 		s.m_LastLevel = Level;
-		Bake(s, Info, Look, Now, Level);
+		if(Look.m_Pattern == 9)
+			LoadPattern();
+		if(!s.m_Textures.m_Body.IsValid())
+		{
+			// the first look is baked right away, so the tee never shows up uncoloured
+			Bake(*s.m_pImages, s.m_aWork[Level], Info, Look, Now, Level, m_pPattern.get());
+			UploadWork(s, Level);
+		}
+		else
+		{
+			// then every frame of the animation is baked on a worker thread
+			auto pJob = std::make_shared<CBakeJob>();
+			pJob->m_pImages = s.m_pImages;
+			pJob->m_pPattern = m_pPattern;
+			pJob->m_Work = std::move(s.m_aWork[Level]);
+			pJob->m_Game = Info;
+			pJob->m_Look = Look;
+			pJob->m_Time = Now;
+			pJob->m_Level = Level;
+			s.m_pJob = pJob;
+			s.m_JobLevel = Level;
+			Engine()->AddJob(pJob);
+		}
 	}
 	Info.m_OriginalRenderSkin = s.m_Textures;
 	Info.m_CustomColoredSkin = false;
