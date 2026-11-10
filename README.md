@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/babyycoded/fog/releases/tag/v1.0.0-beta"><img alt="Release" src="https://img.shields.io/github/v/release/babyycoded/fog?include_prereleases&style=flat-square&label=release&color=B5A8CC&labelColor=101317"></a>
+  <a href="https://github.com/babyycoded/fog/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/babyycoded/fog?include_prereleases&style=flat-square&label=release&color=B5A8CC&labelColor=101317"></a>
   <a href="https://github.com/babyycoded/fog/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/babyycoded/fog/total?style=flat-square&label=downloads&color=8FC9C3&labelColor=101317"></a>
   <a href="https://t.me/fogclient_tw"><img alt="Telegram" src="https://img.shields.io/badge/telegram-@fogclient__tw-E8EBEF?style=flat-square&logo=telegram&logoColor=E8EBEF&labelColor=101317"></a>
   <a href="https://github.com/babyycoded/fog/actions/workflows/fog-release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/babyycoded/fog/fog-release.yml?style=flat-square&label=build&labelColor=101317"></a>
@@ -15,8 +15,8 @@ Fog is a client for [DDNet](https://ddnet.org) with a reworked interface and a q
 
 | System | File | |
 | --- | --- | --- |
-| Windows 10/11, 64-bit | [Fog-1.0.0-beta-win64.zip](https://github.com/babyycoded/fog/releases/download/v1.0.0-beta/Fog-1.0.0-beta-win64.zip) | Unpack, run `DDNet.exe` |
-| Linux, x86_64 | [Fog-1.0.0-beta-linux_x86_64.tar.xz](https://github.com/babyycoded/fog/releases/download/v1.0.0-beta/Fog-1.0.0-beta-linux_x86_64.tar.xz) | Unpack, run `./DDNet` |
+| Windows 10/11, 64-bit | [Fog-1.0.1-beta-win64.zip](https://github.com/babyycoded/fog/releases/download/v1.0.1-beta/Fog-1.0.1-beta-win64.zip) | Unpack, run `DDNet.exe` |
+| Linux, x86_64 | [Fog-1.0.1-beta-linux_x86_64.tar.xz](https://github.com/babyycoded/fog/releases/download/v1.0.1-beta/Fog-1.0.1-beta-linux_x86_64.tar.xz) | Unpack, run `./DDNet` |
 
 Updates and release notes come out first in the Telegram channel [@fogclient_tw](https://t.me/fogclient_tw). The 38-second trailer is attached to the release: [Fog-trailer.mp4](https://github.com/babyycoded/fog/releases/download/v1.0.0-beta/Fog-trailer.mp4).
 
